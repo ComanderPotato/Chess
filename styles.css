@@ -1,0 +1,41 @@
+* {
+  box-sizing: border-box;
+}
+.gameBoard {
+  height: 800px;
+  width: 800px;
+}
+.row {
+  display: flex;
+}
+.square {
+  width: 100px;
+  height: 100px;
+  background-color: rgb(247, 211, 211);
+  display: grid;
+  place-content: center;
+}
+.square--off-color {
+  background-color: rgb(165, 124, 124);
+}
+
+.chess-piece {
+  width: 100%;
+  cursor: move; /* fallback if grab cursor is unsupported */
+  cursor: grab;
+  cursor: -moz-grab;
+  cursor: -webkit-grab;
+}
+.chess-piece:active {
+  cursor: grabbing;
+}
+.availableMoves {
+  background-color: black;
+  opacity: 0.5;
+}
+.highlight-border {
+  border: 4px rgba(255, 255, 255, 0.767) solid;
+}
+.highlight-box {
+  background-color: rgba(227, 252, 196, 0.658);
+}
