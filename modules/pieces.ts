@@ -5,41 +5,116 @@ export class Piece {
   image: string;
   isWhite: boolean;
   id: id;
-  validMoves: number[][];
+  legalMoves: number[][];
   constructor(
     x: number,
     y: number,
     isWhite: boolean,
     id: id,
-    validMoves: number[][],
+    legalMoves: number[][],
     image: string
   ) {
     this.x = x;
     this.y = y;
     this.isWhite = isWhite;
     this.id = id;
-    this.validMoves = validMoves;
+    this.legalMoves = legalMoves;
     this.image = image;
   }
-  isValidMove(oldX: number, oldY: number, newX: number, newY: number) {
-    for (let i = 0; i < this.validMoves.length; i++) {
-      if (
-        Number(oldX) + this.validMoves[i][0] == newX &&
-        Number(oldY) + this.validMoves[i][1] == newY
-      ) {
+  // isValidMove(
+  //   oldX: number,
+  //   oldY: number,
+  //   newX: number,
+  //   newY: number,
+  //   board: (Piece | number)[][]
+  // ) {
+  //   let isWhite: boolean = (board[oldX][oldY] as Piece).isWhite;
+  //   let queue: [x: number, y: number][] = [];
+  //   queue.push([oldX, oldY]);
+  //   while (queue.length !== 0) {
+  //     let current = queue.pop();
+  //   }
+  //   for (let i = 0; i < this.legalMoves.length; i++) {
+  //     if (
+  //       Number(oldX) + this.legalMoves[i][0] == newX &&
+  //       Number(oldY) + this.legalMoves[i][1] == newY
+  //     ) {
+  //       return true;
+  //     }
+  //   }
+  //   return false;
+  // }
+  // check(x, y) {
+
+  // }
+  isValidMove(
+    oldX: number,
+    oldY: number,
+    newX: number,
+    newY: number,
+    board: (Piece | number)[][]
+  ) {
+    const rows = board.length;
+    const cols = board[0].length;
+    const visited = Array(rows)
+      .fill(false)
+      .map(() => Array(cols).fill(false));
+
+    const queue: [x: number, y: number][] = [[oldX, oldY]];
+    visited[oldX][oldY] = true;
+
+    const isValid = (row: number, col: number): boolean => {
+      return (
+        row >= 0 &&
+        row < rows &&
+        col >= 0 &&
+        col < cols &&
+        board[row][col] !== 0 &&
+        !visited[row][col]
+      );
+    };
+
+    const directions: [x: number, y: number][] = [
+      [-1, 0], // Up
+      [1, 0], // Down
+      [0, -1], // Left
+      [0, 1], // Right
+    ];
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+
+      let [row, col] = current;
+      row = Number(row);
+      col = Number(col);
+      if (row == Number(newY) && col == Number(newX)) {
+        console.log("Hello");
         return true;
       }
+
+      for (const [dx, dy] of directions) {
+        const newRow = row + dx;
+        const newCol = col + dy;
+        console.log(newRow);
+        console.log(newCol);
+
+        if (isValid(newRow, newCol)) {
+          visited[newRow][newCol] = true;
+          queue.push([newRow, newCol]);
+        }
+      }
     }
-    return false;
+    return false; // No valid path found
   }
+
   public getX(): number {
     return this.x;
   }
   public getY(): number {
     return this.y;
   }
-  getValidMoves(): number[][] {
-    return this.validMoves;
+  getlegalMoves(): number[][] {
+    return this.legalMoves;
   }
 }
 export class Pawn extends Piece {
@@ -47,25 +122,25 @@ export class Pawn extends Piece {
   specialMoves;
   constructor(x: number, y: number, isWhite: boolean, id: id) {
     let image: string;
-    let validMoves: number[][];
+    let legalMoves: number[][];
     if (isWhite) {
       image = "https://www.chess.com/chess-themes/pieces/neo/150/wp.png";
-      validMoves = [
+      legalMoves = [
         [-1, 0],
         [-2, 0],
       ];
-      super(x, y, isWhite, id, validMoves, image);
+      super(x, y, isWhite, id, legalMoves, image);
       this.specialMoves = [
         [-1, 1],
         [-1, -1],
       ];
     } else {
       image = "https://www.chess.com/chess-themes/pieces/neo/150/bp.png";
-      validMoves = [
+      legalMoves = [
         [1, 0],
         [2, 0],
       ];
-      super(x, y, isWhite, id, validMoves, image);
+      super(x, y, isWhite, id, legalMoves, image);
       this.specialMoves = [
         [1, 1],
         [1, -1],
@@ -76,11 +151,11 @@ export class Pawn extends Piece {
   getSpecialMoves() {
     return this.specialMoves;
   }
-  getValidMoves() {
+  getlegalMoves() {
     if (this.hadFirstMove) {
-      this.validMoves = this.validMoves.slice(0, 1);
+      this.legalMoves = this.legalMoves.slice(0, 1);
     }
-    return this.validMoves;
+    return this.legalMoves;
   }
 }
 export class Queen extends Piece {
@@ -91,7 +166,7 @@ export class Queen extends Piece {
     } else {
       image = "https://www.chess.com/chess-themes/pieces/neo/150/bq.png";
     }
-    let validMoves = [
+    let legalMoves = [
       [0, 1],
       [0, 2],
       [0, 3],
@@ -157,7 +232,7 @@ export class Queen extends Piece {
       [-7, -7],
       [-8, -8],
     ];
-    super(x, y, isWhite, id, validMoves, image);
+    super(x, y, isWhite, id, legalMoves, image);
   }
 }
 export class King extends Piece {
@@ -168,7 +243,7 @@ export class King extends Piece {
     } else {
       image = "https://www.chess.com/chess-themes/pieces/neo/150/bk.png";
     }
-    let validMoves = [
+    let legalMoves = [
       [0, 1],
       [0, -1],
       [1, 0],
@@ -178,7 +253,7 @@ export class King extends Piece {
       [-1, -1],
       [-1, 1],
     ];
-    super(x, y, isWhite, id, validMoves, image);
+    super(x, y, isWhite, id, legalMoves, image);
   }
 }
 export class Rook extends Piece {
@@ -189,7 +264,7 @@ export class Rook extends Piece {
     } else {
       image = "https://www.chess.com/chess-themes/pieces/neo/150/br.png";
     }
-    let validMoves = [
+    let legalMoves = [
       [0, 1],
       [0, 2],
       [0, 3],
@@ -223,7 +298,7 @@ export class Rook extends Piece {
       [7, 0],
       [8, 0],
     ];
-    super(x, y, isWhite, id, validMoves, image);
+    super(x, y, isWhite, id, legalMoves, image);
   }
 }
 export class Bishop extends Piece {
@@ -234,7 +309,7 @@ export class Bishop extends Piece {
     } else {
       image = "https://www.chess.com/chess-themes/pieces/neo/150/bb.png";
     }
-    let validMoves = [
+    let legalMoves = [
       [1, 1],
       [2, 2],
       [3, 3],
@@ -268,7 +343,7 @@ export class Bishop extends Piece {
       [-7, -7],
       [-8, -8],
     ];
-    super(x, y, isWhite, id, validMoves, image);
+    super(x, y, isWhite, id, legalMoves, image);
   }
 }
 export class Knight extends Piece {
@@ -279,7 +354,7 @@ export class Knight extends Piece {
     } else {
       image = "https://www.chess.com/chess-themes/pieces/neo/150/bn.png";
     }
-    let validMoves = [
+    let legalMoves = [
       [2, 1],
       [2, -1],
       [-2, 1],
@@ -289,6 +364,6 @@ export class Knight extends Piece {
       [-1, 2],
       [-1, -2],
     ];
-    super(x, y, isWhite, id, validMoves, image);
+    super(x, y, isWhite, id, legalMoves, image);
   }
 }

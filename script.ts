@@ -121,7 +121,7 @@ class GameBoard {
     let y = Number(e.target.dataset.y);
     // if (typeof this.board[x][y] === "number") return;
     let piece = this.board[x][y] as Piece;
-    let validMoves = piece.getValidMoves();
+    let legalMoves = piece.getlegalMoves();
     let isWhite = piece.isWhite;
     if (piece.id === "pawn") {
       let specialMoves = (piece as Pawn).getSpecialMoves();
@@ -132,28 +132,46 @@ class GameBoard {
         if (typeof square === "number" || typeof square === "undefined")
           continue;
         if (isWhite !== square.isWhite) {
-          validMoves.push([specialX, specialY]);
+          legalMoves.push([specialX, specialY]);
         }
       }
     }
-    for (let i = 0; i < validMoves.length; i++) {
+    let set = new Set();
+    for (let i = 0; i < legalMoves.length; i++) {
       let square = document.querySelector(
-        `[data-x="${x + Number(validMoves[i][0])}"][data-y="${
-          y + Number(validMoves[i][1])
+        `[data-x="${x + Number(legalMoves[i][0])}"][data-y="${
+          y + Number(legalMoves[i][1])
         }"]`
       );
+      // if (
+      //   set.has(x + Number(legalMoves[i][0])) &&
+      //   set.has(y + Number(legalMoves[i][1]))
+      // ) {
+      //   continue;
+      // }
       if (square !== null) {
         let boardSquare =
-          this.board[x + Number(validMoves[i][0])][
-            y + Number(validMoves[i][1])
+          this.board[x + Number(legalMoves[i][0])][
+            y + Number(legalMoves[i][1])
           ];
-        // console.log(boardSquare);
-        // if (
-        //   typeof boardSquare === "undefined" ||
-        //   square === null ||
-        //   (boardSquare as Piece).isWhite === isWhite
-        // )
-        //   continue;
+
+        // if (typeof boardSquare !== "number") {
+        //   console.log(boardSquare.isWhite);
+        // }
+
+        if (
+          typeof boardSquare === "undefined" ||
+          square === null ||
+          (boardSquare as Piece).isWhite === isWhite ||
+          (set.has(x + Number(legalMoves[i][0])) &&
+            set.has(y + Number(legalMoves[i][1])))
+        ) {
+          set.add(x + Number(legalMoves[i][0]) + 1);
+          set.add(x + Number(legalMoves[i][0]) - 1);
+          set.add(y + Number(legalMoves[i][1]) + 1);
+          set.add(y + Number(legalMoves[i][1]) - 1);
+          continue;
+        }
         square.classList.add("availableMoves");
       }
     }
@@ -189,7 +207,7 @@ class GameBoard {
     ) {
       if (
         this.draggedElement.isWhite !== (newPosition as Piece).isWhite &&
-        this.draggedElement.isValidMove(oldX, oldY, newX, newY)
+        this.draggedElement.isValidMove(oldX, oldY, newX, newY, this.board)
       ) {
         this.whitePlayersTurn = !this.whitePlayersTurn;
         let newPosition = document.querySelector(
@@ -245,8 +263,8 @@ class GameBoard {
         let xPosition: number = Number(currentPiece.x);
         let yPosition: number = Number(currentPiece.y);
         let isCurrentWhite: boolean = currentPiece.isWhite;
-        let validMoves: number[][] = currentPiece.getValidMoves();
-        for (let possibleMove of validMoves) {
+        let legalMoves: number[][] = currentPiece.getlegalMoves();
+        for (let possibleMove of legalMoves) {
           let possibleXPosition = possibleMove[0] + xPosition;
           let possibleYPosition = possibleMove[1] + yPosition;
           let square = document.querySelector(
