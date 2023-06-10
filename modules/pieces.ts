@@ -21,29 +21,17 @@ export class Piece {
     this.legalMoves = legalMoves;
     this.image = image;
   }
-  // isValidMove(
-  //   oldX: number,
-  //   oldY: number,
-  //   newX: number,
-  //   newY: number,
-  //   board: (Piece | number)[][]
-  // ) {
-  //   let isWhite: boolean = (board[oldX][oldY] as Piece).isWhite;
-  //   let queue: [x: number, y: number][] = [];
-  //   queue.push([oldX, oldY]);
-  //   while (queue.length !== 0) {
-  //     let current = queue.pop();
-  //   }
-  //   for (let i = 0; i < this.legalMoves.length; i++) {
-  //     if (
-  //       Number(oldX) + this.legalMoves[i][0] == newX &&
-  //       Number(oldY) + this.legalMoves[i][1] == newY
-  //     ) {
-  //       return true;
-  //     }
-  //   }
-  //   return false;
-  // }
+  isValidMove1(oldX: number, oldY: number, newX: number, newY: number) {
+    for (let i = 0; i < this.legalMoves.length; i++) {
+      if (
+        Number(oldX) + this.legalMoves[i][0] == newX &&
+        Number(oldY) + this.legalMoves[i][1] == newY
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
   // check(x, y) {
 
   // }
@@ -59,7 +47,6 @@ export class Piece {
     const visited = Array(rows)
       .fill(false)
       .map(() => Array(cols).fill(false));
-
     const queue: [x: number, y: number][] = [[oldX, oldY]];
     visited[oldX][oldY] = true;
 
@@ -83,22 +70,22 @@ export class Piece {
 
     while (queue.length > 0) {
       const current = queue.shift()!;
-
       let [row, col] = current;
       row = Number(row);
       col = Number(col);
       if (row == Number(newY) && col == Number(newX)) {
-        console.log("Hello");
         return true;
       }
 
       for (const [dx, dy] of directions) {
         const newRow = row + dx;
         const newCol = col + dy;
-        console.log(newRow);
-        console.log(newCol);
+        console.log([newRow, newCol]);
 
-        if (isValid(newRow, newCol)) {
+        if (
+          this.isValidMove1(oldX, oldY, newRow, newCol) &&
+          isValid(newRow, newCol)
+        ) {
           visited[newRow][newCol] = true;
           queue.push([newRow, newCol]);
         }
