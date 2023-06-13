@@ -1,5 +1,7 @@
 import {
   Piece,
+  incrementalPiece,
+  positionalPiece,
   Pawn,
   King,
   Knight,
@@ -8,49 +10,122 @@ import {
   Queen,
 } from "./modules/pieces.js";
 class GameBoard {
-  board: Array<Piece[] | number[]>;
+  board: (number | Piece)[][];
   beingDragged: HTMLImageElement | undefined = undefined;
   draggedElement: Piece | undefined = undefined;
   placeAudio: HTMLAudioElement;
   captureAudio: HTMLAudioElement;
   checkedAudio: HTMLAudioElement;
-  prevState: Array<Piece | number>;
-  nextState: Array<Piece | number>;
+  prevState: (number | Piece)[][][];
+  nextState: (number | Piece)[][][];
   whitePlayersTurn: boolean;
   isWhiteInCheck: boolean;
   isBlackInCheck: boolean;
+  whiteKingPosition: [number, number];
+  blackKingPosition: [number, number];
+  whiteHeatMap: number[][];
+  blackHeatMap: number[][];
+  private BOARD_COLS: number = 8;
+  private BOARD_ROWS: number = 8;
   constructor() {
-    this.board = [
-      [0, 0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0, 0],
-    ];
+    this.board = new Array(this.BOARD_COLS);
+    for (let i = 0; i < this.BOARD_ROWS; i++) {
+      this.board[i] = new Array(this.BOARD_ROWS).fill(0);
+    }
     this.placeAudio = new Audio("./assets/move-self.mp3");
     this.captureAudio = new Audio("./assets/capture.mp3");
     this.checkedAudio = new Audio("./assets/move-check.mp3");
-    this.prevState = [];
-    this.nextState = [];
+    this.prevState = new Array();
+    this.nextState = new Array();
     this.whitePlayersTurn = true;
     this.isWhiteInCheck = false;
     this.isBlackInCheck = false;
+    this.whiteKingPosition = [7, 4];
+    this.blackKingPosition = [0, 4];
+    this.blackHeatMap = new Array(this.BOARD_COLS);
+    for (let i = 0; i < this.BOARD_ROWS; i++) {
+      this.blackHeatMap[i] = new Array(this.BOARD_ROWS).fill(0);
+    }
+    this.whiteHeatMap = new Array(this.BOARD_COLS);
+    for (let i = 0; i < this.BOARD_ROWS; i++) {
+      this.whiteHeatMap[i] = new Array(this.BOARD_ROWS).fill(0);
+    }
   }
+  public generateHeatMap() {
+    for (let currentX = 0; currentX < this.BOARD_COLS; currentX++) {
+      for (let currentY = 0; currentY < this.BOARD_ROWS; currentY++) {
+        const currentSquare = this.board[currentX][currentY];
+        // let legalMoves;
+        if (currentSquare instanceof Piece) {
+          this.blackHeatMap[currentX][currentY] = this.whiteHeatMap[currentX][
+            currentY
+          ] = 0;
+          const legalMoves = this.getLegalMoves(currentSquare);
+          if (currentSquare.isWhite) {
+            if (currentSquare.id === "king") {
+              this.blackHeatMap[currentX][currentY] = 1;
+            }
+            for (let i = 0; i < legalMoves.length; i++) {
+              this.whiteHeatMap[legalMoves[i][0]][legalMoves[i][1]] = -1;
+            }
+          } else {
+            if (currentSquare.id === "king") {
+              this.whiteHeatMap[currentX][currentY] = 1;
+            }
+            for (let i = 0; i < legalMoves.length; i++) {
+              this.blackHeatMap[legalMoves[i][0]][legalMoves[i][1]] = -1;
+            }
+          }
+        }
+      }
+    }
+    // console.table(this.blackHeatMap);
+    // console.table(this.whiteHeatMap);
+  }
+  public generateCheckedMoves(
+    tempBoard: Array<Piece[] | number[]>,
+    isWhite: boolean
+  ): boolean {
+    let tempMap: Array<Piece[] | number[]> = new Array(this.BOARD_COLS);
+    for (let i = 0; i < this.BOARD_ROWS; i++) {
+      tempMap[i] = new Array(this.BOARD_ROWS).fill(0);
+    }
+    isWhite
+      ? (tempMap[this.whiteKingPosition[0]][this.whiteKingPosition[1]] = 1)
+      : (tempMap[this.blackKingPosition[0]][this.blackKingPosition[1]] = 1);
 
+    for (let currentX = 0; currentX < this.BOARD_COLS; currentX++) {
+      for (let currentY = 0; currentY < this.BOARD_ROWS; currentY++) {
+        const currentSquare = tempBoard[currentX][currentY];
+        if (currentSquare instanceof Piece) {
+          const legalMoves = this.getLegalMoves(currentSquare, tempBoard);
+          if (currentSquare.isWhite !== isWhite) {
+            for (let i = 0; i < legalMoves.length; i++) {
+              tempMap[legalMoves[i][0]][legalMoves[i][1]] = -1;
+            }
+          }
+        }
+      }
+    }
+    return isWhite
+      ? tempMap[this.whiteKingPosition[0]][this.whiteKingPosition[1]] === 1
+      : tempMap[this.blackKingPosition[0]][this.blackKingPosition[1]] === 1;
+  }
   createBoard(htmlElement: HTMLDivElement) {
-    for (let i = 0; i < this.board.length; i++) {
-      let row = document.createElement("div");
+    for (let i = 0; i < this.BOARD_COLS; i++) {
+      const row = document.createElement("div");
       row.classList.add("row");
-      for (let j = 0; j < this.board[0].length; j++) {
-        let square = document.createElement("div");
+      for (let j = 0; j < this.BOARD_ROWS; j++) {
+        const square = document.createElement("div");
+        const hintSquare = document.createElement("div");
+        hintSquare.classList.add("hint");
         square.classList.add("square");
         if ((i + j) % 2 !== 0) square.classList.add("square--off-color");
-        square.dataset.x = String(i);
-        square.dataset.y = String(j);
+        square.dataset.x = hintSquare.dataset.x = String(i);
+        square.dataset.y = hintSquare.dataset.y = String(j);
+        hintSquare.dataset.hint = "true";
         row.insertAdjacentElement("beforeend", square);
+        square.insertAdjacentElement("beforeend", hintSquare);
       }
       htmlElement.insertAdjacentElement("beforeend", row);
     }
@@ -95,7 +170,7 @@ class GameBoard {
           default:
             return;
         }
-        let pieceElement = document.createElement("img");
+        const pieceElement = document.createElement("img");
         pieceElement.dataset.x = String(x);
         pieceElement.dataset.y = String(y);
         this.board[x][y] = piece;
@@ -107,80 +182,50 @@ class GameBoard {
         y++;
       }
     }
-    // this.prevState.push(this.board);
+    this.prevState.push(this.board);
+    this.generateHeatMap();
   }
 
   viewBoard() {
     console.log(this.board);
   }
-  showMoves(e: any) {
-    // if (e.target === null) return;
+  showMoves(e: Event) {
+    if (!e.target || !(e.target instanceof HTMLImageElement)) return;
     this.clearSquare();
     e.target.classList.add("highlight-box");
-    let x = Number(e.target.dataset.x);
-    let y = Number(e.target.dataset.y);
-    // if (typeof this.board[x][y] === "number") return;
-    let piece = this.board[x][y] as Piece;
-    let legalMoves = piece.getlegalMoves();
-    let isWhite = piece.isWhite;
-    if (piece.id === "pawn") {
-      let specialMoves = (piece as Pawn).getSpecialMoves();
-      for (let i = 0; i < specialMoves.length; i++) {
-        let specialX = specialMoves[i][0];
-        let specialY = specialMoves[i][1];
-        let square = this.board[x + specialX][y + specialY];
-        if (typeof square === "number" || typeof square === "undefined")
-          continue;
-        if (isWhite !== square.isWhite) {
-          legalMoves.push([specialX, specialY]);
-        }
-      }
-    }
-    let set = new Set();
+    const currentX = Number(e.target.dataset.x);
+    const currentY = Number(e.target.dataset.y);
+    const currentPiece = this.board[currentX][currentY] as Piece;
+    const legalMoves = this.getLegalMoves(currentPiece);
     for (let i = 0; i < legalMoves.length; i++) {
-      let square = document.querySelector(
-        `[data-x="${x + Number(legalMoves[i][0])}"][data-y="${
-          y + Number(legalMoves[i][1])
-        }"]`
-      );
-      // if (
-      //   set.has(x + Number(legalMoves[i][0])) &&
-      //   set.has(y + Number(legalMoves[i][1]))
-      // ) {
-      //   continue;
-      // }
-      if (square !== null) {
-        let boardSquare =
-          this.board[x + Number(legalMoves[i][0])][
-            y + Number(legalMoves[i][1])
-          ];
-
-        // if (typeof boardSquare !== "number") {
-        //   console.log(boardSquare.isWhite);
-        // }
-
-        if (
-          typeof boardSquare === "undefined" ||
-          square === null ||
-          (boardSquare as Piece).isWhite === isWhite ||
-          (set.has(x + Number(legalMoves[i][0])) &&
-            set.has(y + Number(legalMoves[i][1])))
-        ) {
-          set.add(x + Number(legalMoves[i][0]) + 1);
-          set.add(x + Number(legalMoves[i][0]) - 1);
-          set.add(y + Number(legalMoves[i][1]) + 1);
-          set.add(y + Number(legalMoves[i][1]) - 1);
-          continue;
-        }
-        square.classList.add("availableMoves");
+      let tempBoard = new Array(this.BOARD_COLS);
+      for (let j = 0; j < this.BOARD_COLS; j++)
+        tempBoard[j] = this.board[j].slice();
+      tempBoard[legalMoves[i][0]][legalMoves[i][1]] = currentPiece;
+      tempBoard[currentPiece.x][currentPiece.y] = 0;
+      const availableMoves =
+        currentPiece.id === "king" &&
+        ((this.whitePlayersTurn && this.isWhiteInCheck) ||
+          (!this.whitePlayersTurn && this.isBlackInCheck))
+          ? !this.generateCheckedMoves(tempBoard, this.whitePlayersTurn)
+          : this.generateCheckedMoves(tempBoard, this.whitePlayersTurn);
+      if (availableMoves) {
+        let square = document.querySelector(
+          `[data-hint="true"][data-x="${legalMoves[i][0]}"][data-y="${legalMoves[i][1]}"]`
+        ) as HTMLDivElement;
+        square.classList.add("visible");
       }
     }
+    console.log(this.blackHeatMap);
+    console.log(this.whiteHeatMap);
   }
   clearSquare() {
-    document.querySelectorAll(".square, .chess-piece").forEach((s) => {
-      s.classList.remove("availableMoves");
-      s.classList.remove("highlight-box");
-    });
+    document
+      .querySelectorAll(`[data-hint="true"], .chess-piece`)
+      .forEach((s) => {
+        s.classList.remove("visible");
+        s.classList.remove("highlight-box");
+      });
   }
   dragStart(e: any) {
     this.showMoves(e);
@@ -189,59 +234,89 @@ class GameBoard {
       e.target.dataset.y
     ] as Piece;
   }
-  dragDrop(e: any) {
+  dragDrop(e: Event) {
+    this.clearSquare();
     if (
-      typeof this.beingDragged === "undefined" ||
-      typeof this.draggedElement === "undefined"
-    )
-      return;
-    let newX = e.target.dataset.x;
-    let newY = e.target.dataset.y;
-    let oldX = Number(this.beingDragged.dataset.x);
-    let oldY = Number(this.beingDragged.dataset.y);
-    let newPosition = this.board[newX][newY];
-    if (this.draggedElement.isWhite === (newPosition as Piece).isWhite) return;
-    if (
-      (this.whitePlayersTurn && this.draggedElement.isWhite) ||
-      (!this.whitePlayersTurn && !this.draggedElement.isWhite)
+      !e.target ||
+      !(
+        e.target instanceof HTMLDivElement ||
+        e.target instanceof HTMLImageElement
+      ) ||
+      !this.beingDragged ||
+      !this.draggedElement ||
+      !(
+        (this.whitePlayersTurn && this.draggedElement.isWhite) ||
+        (!this.whitePlayersTurn && !this.draggedElement.isWhite)
+      )
     ) {
+      return;
+    }
+    const newPositionX = Number(e.target.dataset.x);
+    const newPositionY = Number(e.target.dataset.y);
+    const oldPositionX = Number(this.beingDragged!.dataset.x);
+    const oldPositionY = Number(this.beingDragged!.dataset.y);
+
+    let legalMoves = this.getLegalMoves(this.draggedElement);
+
+    let newPosition = document.querySelector(
+      `[data-x="${newPositionX}"][data-y="${newPositionY}"]`
+    ) as HTMLDivElement;
+
+    for (let i = 0; i < legalMoves.length; i++) {
+      let tempBoard = new Array(this.BOARD_COLS);
+      for (let j = 0; j < this.BOARD_COLS; j++)
+        tempBoard[j] = this.board[j].slice();
+      tempBoard[legalMoves[i][0]][legalMoves[i][1]] = this.draggedElement;
+      tempBoard[oldPositionX][oldPositionY] = 0;
+      const availableMoves =
+        this.draggedElement.id === "king" &&
+        ((this.whitePlayersTurn && this.isWhiteInCheck) ||
+          (!this.whitePlayersTurn && this.isBlackInCheck))
+          ? !this.generateCheckedMoves(tempBoard, this.whitePlayersTurn)
+          : this.generateCheckedMoves(tempBoard, this.whitePlayersTurn);
       if (
-        this.draggedElement.isWhite !== (newPosition as Piece).isWhite &&
-        this.draggedElement.isValidMove(oldX, oldY, newX, newY, this.board)
+        legalMoves[i][0] === newPositionX &&
+        legalMoves[i][1] === newPositionY &&
+        availableMoves
       ) {
+        this.isBlackInCheck = false;
+        this.isWhiteInCheck = false;
         this.whitePlayersTurn = !this.whitePlayersTurn;
-        let newPosition = document.querySelector(
-          `[data-x="${newX}"][data-y="${newY}"]`
-        ) as HTMLDivElement;
-        if (newPosition.childElementCount === 1) {
-          let positionsPiece = this.board[newX][newY] as Piece;
-          if (positionsPiece.isWhite !== this.draggedElement.isWhite) {
-            newPosition.firstChild!.remove();
-            this.board[newX][newY] = 0;
-            this.captureAudio.play();
-          }
-        } else {
-          this.placeAudio.play();
+        const temp = this.board[newPositionX][newPositionY];
+        this.beingDragged.dataset.x = String(newPositionX);
+        this.beingDragged.dataset.y = String(newPositionY);
+        this.draggedElement.x = newPositionX;
+        this.draggedElement.y = newPositionY;
+        this.board[newPositionX][newPositionY] = this.draggedElement;
+        this.board[oldPositionX][oldPositionY] = 0;
+        if (this.draggedElement.id === "king") {
+          this.whitePlayersTurn
+            ? (this.blackKingPosition = [newPositionX, newPositionY])
+            : (this.whiteKingPosition = [newPositionX, newPositionY]);
         }
-        this.beingDragged.dataset.x = newX;
-        this.beingDragged.dataset.y = newY;
-        this.draggedElement.x = newX;
-        this.draggedElement.y = newY;
-        this.board[newX][newY] = this.draggedElement;
-        this.board[oldX][oldY] = 0;
-        newPosition.insertAdjacentElement("beforeend", this.beingDragged);
-        this.isChecked();
+        if (typeof temp !== "number") {
+          newPosition.lastChild?.remove();
+          this.isChecked()
+            ? this.checkedAudio.play()
+            : this.captureAudio.play();
+        } else if (newPosition.childElementCount === 1) {
+          this.isChecked() ? this.checkedAudio.play() : this.placeAudio.play();
+        }
+        newPosition.insertAdjacentElement("beforeend", this.beingDragged!);
         document
           .querySelectorAll(".square")
           .forEach((s) => s.classList.remove("availableMoves"));
         if (this.draggedElement.id === "pawn") {
           (this.draggedElement as Pawn).hadFirstMove = true;
         }
+        this.generateHeatMap();
       }
     }
-    // this.viewBoard();
+    this.prevState.push(this.board);
+    console.log(this.blackKingPosition);
     this.dragLeave(e);
     this.clearSquare();
+    console.log(this.isBlackInCheck);
   }
   dragEnter(e: any) {
     e.target.classList.add("highlight-border");
@@ -255,37 +330,32 @@ class GameBoard {
   isChecked(): boolean {
     for (let i = 0; i < this.board.length; i++) {
       for (let currentPiece of this.board[i]) {
-        if (
-          typeof currentPiece === "number" ||
-          typeof currentPiece === "undefined"
-        )
-          continue;
-        let xPosition: number = Number(currentPiece.x);
-        let yPosition: number = Number(currentPiece.y);
-        let isCurrentWhite: boolean = currentPiece.isWhite;
-        let legalMoves: number[][] = currentPiece.getlegalMoves();
+        if (typeof currentPiece === "number") continue;
+        let legalMoves = this.getLegalMoves(currentPiece);
         for (let possibleMove of legalMoves) {
-          let possibleXPosition = possibleMove[0] + xPosition;
-          let possibleYPosition = possibleMove[1] + yPosition;
-          let square = document.querySelector(
-            `[data-x="${possibleXPosition}"][data-y="${possibleYPosition}"]`
-          );
-
-          if (square !== null) {
-            let newPosition = this.board[possibleXPosition][
-              possibleYPosition
-            ] as Piece;
-            if (
-              newPosition.id === "king" &&
-              newPosition.isWhite !== isCurrentWhite
-            ) {
-              return true;
-            }
+          const newSquare = this.board[possibleMove[0]][possibleMove[1]];
+          if (typeof newSquare === "number") continue;
+          if (!currentPiece.isSameColor(newSquare) && newSquare.id === "king") {
+            this.whitePlayersTurn
+              ? (this.isWhiteInCheck = true)
+              : (this.isBlackInCheck = true);
+            return true;
           }
         }
       }
     }
     return false;
+  }
+  private getLegalMoves(
+    currentPiece: Piece,
+    board: Array<Array<Piece | number>> = this.board
+  ): [number, number][] {
+    let legalMoves = (currentPiece as incrementalPiece).getValidMoves(
+      currentPiece.x,
+      currentPiece.y,
+      board
+    );
+    return legalMoves;
   }
 }
 

@@ -14,6 +14,7 @@
   background-color: rgb(247, 211, 211);
   display: grid;
   place-content: center;
+  position: relative;
 }
 .square--off-color {
   background-color: rgb(165, 124, 124);
@@ -38,4 +39,23 @@
 }
 .highlight-box {
   background-color: rgba(227, 252, 196, 0.658);
+}
+
+.hint {
+  width: 25px;
+  height: 25px;
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.417);
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  transition: 100ms opacity ease-in-out;
+  transform: translate(-50%, -50%);
+  display: none;
+  pointer-events: none;
+}
+
+.visible {
+  display: block;
 }
