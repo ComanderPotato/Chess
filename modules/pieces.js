@@ -1,5 +1,5 @@
 export class Piece {
-    constructor(x, y, isWhite, id, legalMoves, image, type) {
+    constructor(x, y, isWhite, id, legalMoves, image, coords, type) {
         this.isValid = (posX, posY) => {
             return posX >= 0 && posX < 8 && posY >= 0 && posY < 8;
         };
@@ -10,18 +10,17 @@ export class Piece {
         this.legalMoves = legalMoves;
         this.image = image;
         this.type = type;
+        this.coords = coords;
+        this.availableMoves = [];
     }
     isSameColor(targetPiece) {
         return this.isWhite === targetPiece.isWhite;
     }
-    isValidMove1(oldX, oldY, newX, newY) {
-        for (let i = 0; i < this.legalMoves.length; i++) {
-            if (Number(oldX) + this.legalMoves[i][0] == newX &&
-                Number(oldY) + this.legalMoves[i][1] == newY) {
-                return true;
-            }
-        }
-        return false;
+    getAvailableMoves() {
+        return this.availableMoves;
+    }
+    setAvailableMoves(updatedMoves) {
+        this.availableMoves = updatedMoves;
     }
     getX() {
         return this.x;
@@ -32,10 +31,13 @@ export class Piece {
     getlegalMoves() {
         return this.legalMoves;
     }
+    getCoords() {
+        return "";
+    }
 }
 export class positionalPiece extends Piece {
-    constructor(x, y, isWhite, id, legalMoves, image) {
-        super(x, y, isWhite, id, legalMoves, image, "positional");
+    constructor(x, y, isWhite, id, legalMoves, image, coords) {
+        super(x, y, isWhite, id, legalMoves, image, coords, "positional");
     }
     getValidMoves(posX, posY, board) {
         const validMoves = [];
@@ -53,8 +55,8 @@ export class positionalPiece extends Piece {
     }
 }
 export class incrementalPiece extends Piece {
-    constructor(x, y, isWhite, id, legalMoves, image) {
-        super(x, y, isWhite, id, legalMoves, image, "incremental");
+    constructor(x, y, isWhite, id, legalMoves, image, coords) {
+        super(x, y, isWhite, id, legalMoves, image, coords, "incremental");
     }
     getValidMoves(posX, posY, board) {
         const validMoves = [];
@@ -83,7 +85,7 @@ export class incrementalPiece extends Piece {
     }
 }
 export class Pawn extends incrementalPiece {
-    constructor(x, y, isWhite, id) {
+    constructor(x, y, isWhite, id, coords) {
         let image;
         let legalMoves;
         if (isWhite) {
@@ -92,7 +94,7 @@ export class Pawn extends incrementalPiece {
                 [-1, 0],
                 [-2, 0],
             ];
-            super(x, y, isWhite, id, legalMoves, image);
+            super(x, y, isWhite, id, legalMoves, image, coords);
             this.attackMoves = [
                 [-1, 1],
                 [-1, -1],
@@ -104,7 +106,7 @@ export class Pawn extends incrementalPiece {
                 [1, 0],
                 [2, 0],
             ];
-            super(x, y, isWhite, id, legalMoves, image);
+            super(x, y, isWhite, id, legalMoves, image, coords);
             this.attackMoves = [
                 [1, 1],
                 [1, -1],
@@ -112,29 +114,23 @@ export class Pawn extends incrementalPiece {
         }
         this.hadFirstMove = false;
     }
+    // public getMoves(posX: number, posY: number, board: (number | Piece)[][]) {
+    //   const attackMoves: [number, number][] = [];
+    // }
     getAttackMoves(posX, posY, board) {
         const attackMoves = [];
         for (let i = 0; i < this.attackMoves.length; i++) {
             if (this.isValid(Number(posX + this.attackMoves[i][0]), Number(posY + this.attackMoves[i][1]))) {
                 let newPositionX = Number(posX + this.attackMoves[i][0]);
                 let newPositionY = Number(posY + this.attackMoves[i][1]);
-                let newPosition = board[newPositionX][newPositionY];
-                if (typeof newPosition !== "number" && !this.isSameColor(newPosition)) {
-                    attackMoves.push([newPositionX, newPositionY]);
-                }
+                attackMoves.push([newPositionX, newPositionY]);
             }
         }
         return attackMoves;
     }
     getValidMoves(posX, posY, board) {
         const validMoves = [];
-        let cutOff;
-        if (this.hadFirstMove) {
-            cutOff = 1;
-        }
-        else {
-            cutOff = 2;
-        }
+        const cutOff = this.hadFirstMove ? 1 : 2;
         for (let i = 0; i < cutOff; i++) {
             if (this.isValid(Number(posX + this.legalMoves[i][0]), Number(posY + this.legalMoves[i][1]))) {
                 let newPositionX = Number(posX + this.legalMoves[i][0]);
@@ -162,14 +158,10 @@ export class Pawn extends incrementalPiece {
     }
 }
 export class Queen extends incrementalPiece {
-    constructor(x, y, isWhite, id) {
-        let image;
-        if (isWhite) {
-            image = "https://www.chess.com/chess-themes/pieces/neo/150/wq.png";
-        }
-        else {
-            image = "https://www.chess.com/chess-themes/pieces/neo/150/bq.png";
-        }
+    constructor(x, y, isWhite, id, coords) {
+        let image = isWhite
+            ? "https://www.chess.com/chess-themes/pieces/neo/150/wq.png"
+            : "https://www.chess.com/chess-themes/pieces/neo/150/bq.png";
         let legalMoves = [
             [1, 1],
             [1, 0],
@@ -180,18 +172,14 @@ export class Queen extends incrementalPiece {
             [-1, 0],
             [-1, 1],
         ];
-        super(x, y, isWhite, id, legalMoves, image);
+        super(x, y, isWhite, id, legalMoves, image, coords);
     }
 }
 export class King extends positionalPiece {
-    constructor(x, y, isWhite, id) {
-        let image;
-        if (isWhite) {
-            image = "https://www.chess.com/chess-themes/pieces/neo/150/wk.png";
-        }
-        else {
-            image = "https://www.chess.com/chess-themes/pieces/neo/150/bk.png";
-        }
+    constructor(x, y, isWhite, id, coords) {
+        let image = isWhite
+            ? "https://www.chess.com/chess-themes/pieces/neo/150/wk.png"
+            : "https://www.chess.com/chess-themes/pieces/neo/150/bk.png";
         let legalMoves = [
             [0, 1],
             [0, -1],
@@ -202,56 +190,44 @@ export class King extends positionalPiece {
             [-1, -1],
             [-1, 1],
         ];
-        super(x, y, isWhite, id, legalMoves, image);
+        super(x, y, isWhite, id, legalMoves, image, coords);
         this.hadFirstMove = false;
     }
 }
 export class Rook extends incrementalPiece {
-    constructor(x, y, isWhite, id) {
-        let image;
-        if (isWhite) {
-            image = "https://www.chess.com/chess-themes/pieces/neo/150/wr.png";
-        }
-        else {
-            image = "https://www.chess.com/chess-themes/pieces/neo/150/br.png";
-        }
+    constructor(x, y, isWhite, id, coords) {
+        let image = isWhite
+            ? "https://www.chess.com/chess-themes/pieces/neo/150/wr.png"
+            : "https://www.chess.com/chess-themes/pieces/neo/150/br.png";
         let legalMoves = [
             [0, 1],
             [0, -1],
             [1, 0],
             [-1, 0],
         ];
-        super(x, y, isWhite, id, legalMoves, image);
+        super(x, y, isWhite, id, legalMoves, image, coords);
         this.hadFirstMove = false;
     }
 }
 export class Bishop extends incrementalPiece {
-    constructor(x, y, isWhite, id) {
-        let image;
-        if (isWhite) {
-            image = "https://www.chess.com/chess-themes/pieces/neo/150/wb.png";
-        }
-        else {
-            image = "https://www.chess.com/chess-themes/pieces/neo/150/bb.png";
-        }
+    constructor(x, y, isWhite, id, coords) {
+        let image = isWhite
+            ? "https://www.chess.com/chess-themes/pieces/neo/150/wb.png"
+            : "https://www.chess.com/chess-themes/pieces/neo/150/bb.png";
         let legalMoves = [
             [1, 1],
             [1, -1],
             [-1, -1],
             [-1, 1],
         ];
-        super(x, y, isWhite, id, legalMoves, image);
+        super(x, y, isWhite, id, legalMoves, image, coords);
     }
 }
 export class Knight extends positionalPiece {
-    constructor(x, y, isWhite, id) {
-        let image;
-        if (isWhite) {
-            image = "https://www.chess.com/chess-themes/pieces/neo/150/wn.png";
-        }
-        else {
-            image = "https://www.chess.com/chess-themes/pieces/neo/150/bn.png";
-        }
+    constructor(x, y, isWhite, id, coords) {
+        let image = isWhite
+            ? "https://www.chess.com/chess-themes/pieces/neo/150/wn.png"
+            : "https://www.chess.com/chess-themes/pieces/neo/150/bn.png";
         let legalMoves = [
             [2, 1],
             [2, -1],
@@ -262,6 +238,6 @@ export class Knight extends positionalPiece {
             [-1, 2],
             [-1, -2],
         ];
-        super(x, y, isWhite, id, legalMoves, image);
+        super(x, y, isWhite, id, legalMoves, image, coords);
     }
 }

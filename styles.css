@@ -55,7 +55,8 @@
   display: none;
   pointer-events: none;
 }
-
+.hint-enemy {
+}
 .visible {
   display: block;
 }
