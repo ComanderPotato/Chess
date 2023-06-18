@@ -1,17 +1,4 @@
-showme(currentSelection) {
-    if(neither in check) {
-        show all available moves
-    } else {
-        if(black is checked AND currentPiece === blackPiece) {
-            generate all moves to block black king
-        } else if(white is checked AND currentPiece === whitePiece) {
-            generate all moves to block white king
-        }
-    }
-}
-
-should take in a tempBoard and the color its generating it for
-generateBlockMoves() {
-    
-    return true if king is safe
-}
+after each move
+update the board,
+generate heatMap
+generate moves

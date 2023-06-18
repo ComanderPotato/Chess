@@ -1,21 +1,21 @@
 type id = "king" | "rook" | "pawn" | "queen" | "knight" | "bishop";
 type Type = "incremental" | "positional";
 export class Piece {
-  x: number;
-  y: number;
-  image: string;
-  isWhite: boolean;
-  id: id;
-  legalMoves: number[][];
-  type: Type;
-  availableMoves: number[][];
-  coords: string;
+  private x: number;
+  private y: number;
+  private image: string;
+  private isWhite: boolean;
+  private id: id;
+  private legalMoves: [number, number][];
+  private type: Type;
+  private availableMoves: [number, number][];
+  private coords: string;
   constructor(
     x: number,
     y: number,
     isWhite: boolean,
     id: id,
-    legalMoves: number[][],
+    legalMoves: [number, number][],
     image: string,
     coords: string,
     type: Type
@@ -36,23 +36,47 @@ export class Piece {
   public isValid = (posX: number, posY: number): boolean => {
     return posX >= 0 && posX < 8 && posY >= 0 && posY < 8;
   };
-  public getAvailableMoves(): number[][] {
+  public getAvailableMoves(): [number, number][] {
     return this.availableMoves;
   }
-  public setAvailableMoves(updatedMoves: number[][]): void {
+  public setAvailableMoves(updatedMoves: [number, number][]): void {
     this.availableMoves = updatedMoves;
   }
   public getX(): number {
     return this.x;
   }
+  public setX(newX: number): void {
+    this.x = newX;
+  }
   public getY(): number {
     return this.y;
   }
-  getlegalMoves(): number[][] {
+  public setY(newY: number): void {
+    this.y = newY;
+  }
+  public getIsWhite(): boolean {
+    return this.isWhite;
+  }
+  public getlegalMoves(): [number, number][] {
     return this.legalMoves;
   }
   public getCoords(): string {
-    return "";
+    return this.coords;
+  }
+  public setCoords(newCoords: string): void {
+    this.coords = newCoords;
+  }
+  public getID(): string {
+    return this.id;
+  }
+  public getImage(): string {
+    return this.image;
+  }
+  public getType(): string {
+    return this.type;
+  }
+  public setLegalMoves(newLegalMoves: [number, number][]): void {
+    this.legalMoves = newLegalMoves;
   }
 }
 
@@ -62,24 +86,34 @@ export class positionalPiece extends Piece {
     y: number,
     isWhite: boolean,
     id: id,
-    legalMoves: number[][],
+    legalMoves: [number, number][],
     image: string,
     coords: string
   ) {
     super(x, y, isWhite, id, legalMoves, image, coords, "positional");
   }
-  public getValidMoves(
-    posX: number,
-    posY: number,
-    board: (Piece | number)[][]
-  ): [number, number][] {
+  public getValidMoves(board: (Piece | number)[][]): [number, number][] {
     const validMoves: [number, number][] = [];
-    for (let i = 0; i < this.legalMoves.length; i++) {
-      let newPositionX = Number(posX + this.legalMoves[i][0]);
-      let newPositionY = Number(posY + this.legalMoves[i][1]);
+    for (const moves of this.getlegalMoves()) {
+      const newPositionX = this.getX() + moves[0];
+      const newPositionY = this.getY() + moves[1];
       if (this.isValid(newPositionX, newPositionY)) {
-        let newPosition = board[newPositionX][newPositionY];
+        const newPosition = board[newPositionX][newPositionY];
         if (typeof newPosition === "number" || !this.isSameColor(newPosition)) {
+          validMoves.push([newPositionX, newPositionY]);
+        }
+      }
+    }
+    return validMoves;
+  }
+  public getLegalAttackMoves(board: (Piece | number)[][]): [number, number][] {
+    const validMoves: [number, number][] = [];
+    for (const moves of this.getlegalMoves()) {
+      const newPositionX = this.getX() + moves[0];
+      const newPositionY = this.getY() + moves[1];
+      if (this.isValid(newPositionX, newPositionY)) {
+        const newPosition = board[newPositionX][newPositionY];
+        if (typeof newPosition === "number" || this.isSameColor(newPosition)) {
           validMoves.push([newPositionX, newPositionY]);
         }
       }
@@ -93,40 +127,46 @@ export class incrementalPiece extends Piece {
     y: number,
     isWhite: boolean,
     id: id,
-    legalMoves: number[][],
+    legalMoves: [number, number][],
     image: string,
     coords: string
   ) {
     super(x, y, isWhite, id, legalMoves, image, coords, "incremental");
   }
-  public getValidMoves(
-    posX: number,
-    posY: number,
-    board: (Piece | number)[][]
-  ): [number, number][] {
+  public getValidMoves(board: (Piece | number)[][]): [number, number][] {
     const validMoves: [number, number][] = [];
-    for (let i = 0; i < this.legalMoves.length; i++) {
-      let initalPosX = posX;
-      let initalPosY = posY;
-      while (
-        this.isValid(
-          Number(initalPosX + this.legalMoves[i][0]),
-          Number(initalPosY + this.legalMoves[i][1])
-        )
-      ) {
-        let newPositionX = Number(initalPosX + this.legalMoves[i][0]);
-        let newPositionY = Number(initalPosY + this.legalMoves[i][1]);
-        let newPosition = board[newPositionX][newPositionY];
-        if (typeof newPosition === "number") {
+    for (const moves of this.getlegalMoves()) {
+      let newPositionX = this.getX() + moves[0];
+      let newPositionY = this.getY() + moves[1];
+      while (this.isValid(newPositionX, newPositionY)) {
+        const newPosition = board[newPositionX][newPositionY];
+        if (typeof newPosition === "number" || !this.isSameColor(newPosition)) {
           validMoves.push([newPositionX, newPositionY]);
-          initalPosX = newPositionX;
-          initalPosY = newPositionY;
-        } else if (this.isSameColor(newPosition)) {
-          break;
-        } else {
-          validMoves.push([newPositionX, newPositionY]);
+        }
+        if (newPosition instanceof Piece) {
           break;
         }
+        newPositionX += moves[0];
+        newPositionY += moves[1];
+      }
+    }
+    return validMoves;
+  }
+  public getLegalAttackMoves(board: (Piece | number)[][]): [number, number][] {
+    const validMoves: [number, number][] = [];
+    for (const moves of this.getlegalMoves()) {
+      let newPositionX = this.getX() + moves[0];
+      let newPositionY = this.getY() + moves[1];
+      while (this.isValid(newPositionX, newPositionY)) {
+        const newPosition = board[newPositionX][newPositionY];
+        if (typeof newPosition === "number" || this.isSameColor(newPosition)) {
+          validMoves.push([newPositionX, newPositionY]);
+        }
+        if (newPosition instanceof Piece) {
+          break;
+        }
+        newPositionX += moves[0];
+        newPositionY += moves[1];
       }
     }
     return validMoves;
@@ -134,97 +174,94 @@ export class incrementalPiece extends Piece {
 }
 
 export class Pawn extends incrementalPiece {
-  hadFirstMove;
-  attackMoves;
+  private hadFirstMove;
+  private legalAttackMoves: [number, number][];
+  private availableAttackMoves: [number, number][];
   constructor(x: number, y: number, isWhite: boolean, id: id, coords: string) {
-    let image: string;
-    let legalMoves: number[][];
-    if (isWhite) {
-      image = "https://www.chess.com/chess-themes/pieces/neo/150/wp.png";
-      legalMoves = [
-        [-1, 0],
-        [-2, 0],
-      ];
-      super(x, y, isWhite, id, legalMoves, image, coords);
-      this.attackMoves = [
-        [-1, 1],
-        [-1, -1],
-      ];
-    } else {
-      image = "https://www.chess.com/chess-themes/pieces/neo/150/bp.png";
-      legalMoves = [
-        [1, 0],
-        [2, 0],
-      ];
-      super(x, y, isWhite, id, legalMoves, image, coords);
-      this.attackMoves = [
-        [1, 1],
-        [1, -1],
-      ];
-    }
+    const [image, legalMoves]: [string, [number, number][]] = isWhite
+      ? [
+          "https://www.chess.com/chess-themes/pieces/neo/150/wp.png",
+          [
+            [-1, 0],
+            [-2, 0],
+          ],
+        ]
+      : [
+          "https://www.chess.com/chess-themes/pieces/neo/150/bp.png",
+          [
+            [1, 0],
+            [2, 0],
+          ],
+        ];
+    super(x, y, isWhite, id, legalMoves, image, coords);
+    this.legalAttackMoves = isWhite
+      ? [
+          [-1, 1],
+          [-1, -1],
+        ]
+      : [
+          [1, 1],
+          [1, -1],
+        ];
     this.hadFirstMove = false;
+    this.availableAttackMoves = [];
+  }
+  public concatMoves(): void {
+    this.setAvailableMoves(
+      this.getAvailableMoves().concat(this.availableAttackMoves)
+    );
   }
 
-  // public getMoves(posX: number, posY: number, board: (number | Piece)[][]) {
-  //   const attackMoves: [number, number][] = [];
-
-  // }
-  public getAttackMoves(
-    posX: number,
-    posY: number,
-    board: (number | Piece)[][]
-  ) {
-    const attackMoves: [number, number][] = [];
-    for (let i = 0; i < this.attackMoves.length; i++) {
-      if (
-        this.isValid(
-          Number(posX + this.attackMoves[i][0]),
-          Number(posY + this.attackMoves[i][1])
-        )
-      ) {
-        let newPositionX = Number(posX + this.attackMoves[i][0]);
-        let newPositionY = Number(posY + this.attackMoves[i][1]);
-        attackMoves.push([newPositionX, newPositionY]);
+  public getAvailableAttackMoves(): [number, number][] {
+    return this.availableAttackMoves;
+  }
+  public setAvailableAttackMoves(updatedAttackMoves: [number, number][]): void {
+    this.availableAttackMoves = updatedAttackMoves;
+  }
+  public getHadFirstMove(): boolean {
+    return this.hadFirstMove;
+  }
+  public setHadFirstMove(): void {
+    this.hadFirstMove = true;
+    this.setLegalMoves(this.getlegalMoves().slice(0, 1));
+  }
+  public getLegalAttackMoves(board?: (number | Piece)[][]): [number, number][] {
+    const validMoves: [number, number][] = [];
+    for (const move of this.legalAttackMoves) {
+      const newPositionX = this.getX() + move[0];
+      const newPositionY = this.getY() + move[1];
+      if (this.isValid(newPositionX, newPositionY)) {
+        validMoves.push([newPositionX, newPositionY]);
       }
     }
-    return attackMoves;
+    return validMoves;
   }
-  public getValidMoves(
-    posX: number,
-    posY: number,
-    board: (number | Piece)[][]
-  ): [number, number][] {
+  public getValidAttackMoves(board: (number | Piece)[][]): [number, number][] {
     const validMoves: [number, number][] = [];
-    const cutOff = this.hadFirstMove ? 1 : 2;
-    for (let i = 0; i < cutOff; i++) {
-      if (
-        this.isValid(
-          Number(posX + this.legalMoves[i][0]),
-          Number(posY + this.legalMoves[i][1])
-        )
-      ) {
-        let newPositionX = Number(posX + this.legalMoves[i][0]);
-        let newPositionY = Number(posY + this.legalMoves[i][1]);
-        let newPosition = board[newPositionX][newPositionY];
+    for (const move of this.legalAttackMoves) {
+      const newPositionX = this.getX() + move[0];
+      const newPositionY = this.getY() + move[1];
+      if (this.isValid(newPositionX, newPositionY)) {
+        const newPosition = board[newPositionX][newPositionY];
+        if (newPosition instanceof Piece && !this.isSameColor(newPosition)) {
+          validMoves.push([newPositionX, newPositionY]);
+        }
+      }
+    }
+    return validMoves;
+  }
+  public getValidMoves(board: (number | Piece)[][]): [number, number][] {
+    const validMoves: [number, number][] = [];
+    for (const move of this.getlegalMoves()) {
+      const newPositionX = this.getX() + move[0];
+      const newPositionY = this.getY() + move[1];
+
+      if (this.isValid(newPositionX, newPositionY)) {
+        const newPosition = board[newPositionX][newPositionY];
         if (typeof newPosition === "number") {
           validMoves.push([newPositionX, newPositionY]);
         } else {
           break;
-        }
-      }
-    }
-    for (let i = 0; i < this.attackMoves.length; i++) {
-      if (
-        this.isValid(
-          Number(posX + this.attackMoves[i][0]),
-          Number(posY + this.attackMoves[i][1])
-        )
-      ) {
-        let newPositionX = Number(posX + this.attackMoves[i][0]);
-        let newPositionY = Number(posY + this.attackMoves[i][1]);
-        let newPosition = board[newPositionX][newPositionY];
-        if (typeof newPosition !== "number" && !this.isSameColor(newPosition)) {
-          validMoves.push([newPositionX, newPositionY]);
         }
       }
     }
@@ -233,11 +270,11 @@ export class Pawn extends incrementalPiece {
 }
 export class Queen extends incrementalPiece {
   constructor(x: number, y: number, isWhite: boolean, id: id, coords: string) {
-    let image: string = isWhite
+    const image: string = isWhite
       ? "https://www.chess.com/chess-themes/pieces/neo/150/wq.png"
       : "https://www.chess.com/chess-themes/pieces/neo/150/bq.png";
 
-    let legalMoves = [
+    const legalMoves: [number, number][] = [
       [1, 1],
       [1, 0],
       [1, -1],
@@ -253,11 +290,11 @@ export class Queen extends incrementalPiece {
 export class King extends positionalPiece {
   hadFirstMove;
   constructor(x: number, y: number, isWhite: boolean, id: id, coords: string) {
-    let image: string = isWhite
+    const image: string = isWhite
       ? "https://www.chess.com/chess-themes/pieces/neo/150/wk.png"
       : "https://www.chess.com/chess-themes/pieces/neo/150/bk.png";
 
-    let legalMoves = [
+    const legalMoves: [number, number][] = [
       [0, 1],
       [0, -1],
       [1, 0],
@@ -270,15 +307,22 @@ export class King extends positionalPiece {
     super(x, y, isWhite, id, legalMoves, image, coords);
     this.hadFirstMove = false;
   }
+  public getHadFirstMove(): boolean {
+    return this.hadFirstMove;
+  }
+  public setHadFirstMove(): void {
+    // If had first move king cant castle
+    this.hadFirstMove = true;
+  }
 }
 export class Rook extends incrementalPiece {
-  hadFirstMove;
+  private hadFirstMove;
   constructor(x: number, y: number, isWhite: boolean, id: id, coords: string) {
-    let image: string = isWhite
+    const image: string = isWhite
       ? "https://www.chess.com/chess-themes/pieces/neo/150/wr.png"
       : "https://www.chess.com/chess-themes/pieces/neo/150/br.png";
 
-    let legalMoves = [
+    const legalMoves: [number, number][] = [
       [0, 1],
       [0, -1],
       [1, 0],
@@ -287,14 +331,21 @@ export class Rook extends incrementalPiece {
     super(x, y, isWhite, id, legalMoves, image, coords);
     this.hadFirstMove = false;
   }
+  public getHadFirstMove(): boolean {
+    return this.hadFirstMove;
+  }
+  public setHadFirstMove(): void {
+    // If had first move rook cant castle
+    this.hadFirstMove = true;
+  }
 }
 export class Bishop extends incrementalPiece {
   constructor(x: number, y: number, isWhite: boolean, id: id, coords: string) {
-    let image: string = isWhite
+    const image: string = isWhite
       ? "https://www.chess.com/chess-themes/pieces/neo/150/wb.png"
       : "https://www.chess.com/chess-themes/pieces/neo/150/bb.png";
 
-    let legalMoves = [
+    const legalMoves: [number, number][] = [
       [1, 1],
       [1, -1],
       [-1, -1],
@@ -305,11 +356,11 @@ export class Bishop extends incrementalPiece {
 }
 export class Knight extends positionalPiece {
   constructor(x: number, y: number, isWhite: boolean, id: id, coords: string) {
-    let image: string = isWhite
+    const image: string = isWhite
       ? "https://www.chess.com/chess-themes/pieces/neo/150/wn.png"
       : "https://www.chess.com/chess-themes/pieces/neo/150/bn.png";
 
-    let legalMoves = [
+    const legalMoves: [number, number][] = [
       [2, 1],
       [2, -1],
       [-2, 1],

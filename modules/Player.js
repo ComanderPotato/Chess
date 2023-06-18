@@ -1,30 +1,29 @@
+import getCoords from "./Utils/Coordinates.js";
 export default class Player {
     constructor(isWhite, kingsPosition) {
         this.availableMoves = 0;
         this.isChecked = false;
-        this.heatMap = [];
+        this.opponentHeatMap = [];
         this.isWhite = isWhite;
         this.kingsPositions = kingsPosition;
         this.availablePieces = new Map();
     }
     addPiece(piece) {
-        this.availablePieces.set(piece.coords, piece);
+        this.availablePieces.set(piece.getCoords(), piece);
     }
-    updatePiece(piece) {
-        this.availablePieces.delete(piece.coords);
-        const newCoords = this.getCoords(piece.x, piece.y);
+    updatePiece(piece, oldCoords) {
+        this.availablePieces.delete(oldCoords);
+        const newCoords = getCoords(piece.getX(), piece.getY());
         this.availablePieces.set(newCoords, piece);
         this.updateMoves();
     }
     removePiece(piece) {
-        const piecesMoves = this.availablePieces.get(piece.coords).availableMoves
-            .length;
-        this.availablePieces.delete(piece.coords);
+        this.availablePieces.delete(piece.getCoords());
         this.updateMoves();
     }
     updateMoves() {
         let updatedMoves = 0;
-        this.availablePieces.forEach((piece) => (updatedMoves += piece.availableMoves.length));
+        this.availablePieces.forEach((piece) => (updatedMoves += piece.getAvailableMoves().length));
         this.availableMoves = updatedMoves;
     }
     getAvailablePieces() {
@@ -39,8 +38,8 @@ export default class Player {
     getIsChecked() {
         return this.isChecked;
     }
-    setIsChecked() {
-        this.isChecked = !this.isChecked;
+    setIsChecked(status) {
+        this.isChecked = status;
     }
     setKingsPosition(kingX, kingY) {
         this.kingsPositions = [kingX, kingY];
@@ -48,19 +47,10 @@ export default class Player {
     getKingsPosition() {
         return this.kingsPositions;
     }
-    getHeatMap() {
-        return this.heatMap;
+    getOpponentHeatMap() {
+        return this.opponentHeatMap;
     }
-    setHeatMap(heatMap) {
-        this.heatMap = heatMap;
-    }
-    getXAxis(num) {
-        return String(8 - num);
-    }
-    getYAxis(num) {
-        return String.fromCharCode(97 + num);
-    }
-    getCoords(x, y) {
-        return this.getYAxis(y) + this.getXAxis(x);
+    setOpponentHeatMap(updatedHeatMap) {
+        this.opponentHeatMap = updatedHeatMap;
     }
 }

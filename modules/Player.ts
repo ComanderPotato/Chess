@@ -1,11 +1,12 @@
 import { Piece, incrementalPiece, positionalPiece } from "./pieces";
+import getCoords from "./Utils/Coordinates.js";
 export default class Player {
-  isWhite: boolean;
-  availablePieces: Map<string, Piece>;
-  availableMoves: number = 0;
-  isChecked: boolean = false;
-  kingsPositions: [number, number];
-  heatMap: number[][] = [];
+  private isWhite: boolean;
+  private availablePieces: Map<string, Piece>;
+  private availableMoves: number = 0;
+  private isChecked: boolean = false;
+  private kingsPositions: [number, number];
+  private opponentHeatMap: number[][] = [];
 
   constructor(isWhite: boolean, kingsPosition: [number, number]) {
     this.isWhite = isWhite;
@@ -14,24 +15,23 @@ export default class Player {
   }
 
   public addPiece(piece: Piece): void {
-    this.availablePieces.set(piece.coords, piece);
+    this.availablePieces.set(piece.getCoords(), piece);
   }
-  public updatePiece(piece: Piece): void {
-    this.availablePieces.delete(piece.coords);
-    const newCoords: string = this.getCoords(piece.x, piece.y);
+  public updatePiece(piece: Piece, oldCoords: string): void {
+    this.availablePieces.delete(oldCoords);
+    const newCoords: string = getCoords(piece.getX(), piece.getY());
     this.availablePieces.set(newCoords, piece);
     this.updateMoves();
   }
   public removePiece(piece: Piece): void {
-    const piecesMoves = this.availablePieces.get(piece.coords)!.availableMoves
-      .length;
-    this.availablePieces.delete(piece.coords);
+    this.availablePieces.delete(piece.getCoords());
     this.updateMoves();
   }
   public updateMoves(): void {
     let updatedMoves = 0;
+
     this.availablePieces.forEach(
-      (piece) => (updatedMoves += piece.availableMoves.length)
+      (piece) => (updatedMoves += piece.getAvailableMoves().length)
     );
     this.availableMoves = updatedMoves;
   }
@@ -48,8 +48,8 @@ export default class Player {
   public getIsChecked(): boolean {
     return this.isChecked;
   }
-  public setIsChecked(): void {
-    this.isChecked = !this.isChecked;
+  public setIsChecked(status: boolean): void {
+    this.isChecked = status;
   }
   public setKingsPosition(kingX: number, kingY: number): void {
     this.kingsPositions = [kingX, kingY];
@@ -57,19 +57,10 @@ export default class Player {
   public getKingsPosition(): [number, number] {
     return this.kingsPositions;
   }
-  public getHeatMap(): number[][] {
-    return this.heatMap;
+  public getOpponentHeatMap(): number[][] {
+    return this.opponentHeatMap;
   }
-  public setHeatMap(heatMap: number[][]): void {
-    this.heatMap = heatMap;
-  }
-  private getXAxis(num: number) {
-    return String(8 - num);
-  }
-  private getYAxis(num: number) {
-    return String.fromCharCode(97 + num);
-  }
-  private getCoords(x: number, y: number): string {
-    return this.getYAxis(y) + this.getXAxis(x);
+  public setOpponentHeatMap(updatedHeatMap: number[][]): void {
+    this.opponentHeatMap = updatedHeatMap;
   }
 }
