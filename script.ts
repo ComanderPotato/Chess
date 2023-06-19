@@ -126,29 +126,32 @@ class GameBoard {
     pawnsAttackMoves: boolean = false,
     board: Array<Array<Piece | number>> = this.board
   ): [number, number][] {
-    if (currentPiece instanceof Pawn) {
-      if (pawnsAttackMoves) {
-        return currentPiece.getValidAttackMoves(board);
-      } else {
-        return currentPiece.getValidMoves(board);
-      }
-    } else {
-      let validMoves = (currentPiece as incrementalPiece).getValidMoves(board);
+    // if (currentPiece instanceof Pawn) {
+    //   if (pawnsAttackMoves) {
+    //     return currentPiece.getValidAttackMoves(board);
+    //   } else {
+    //     return currentPiece.getValidMoves(board);
+    //   }
+    // } else {
+    //   let validMoves = (currentPiece as incrementalPiece).getValidMoves(board);
 
-      if (currentPiece.getID() === "king") {
-        const playersMap = currentPiece.getIsWhite()
-          ? this.whitePlayer.getOpponentHeatMap()
-          : this.blackPlayer.getOpponentHeatMap();
-        validMoves = validMoves.filter(
-          (move) => playersMap[move[0]][move[1]] === 0
-        );
-      }
-      return validMoves;
-    }
+    //   if (currentPiece.getID() === "king") {
+    //     const playersMap = currentPiece.getIsWhite()
+    //       ? this.whitePlayer.getOpponentHeatMap()
+    //       : this.blackPlayer.getOpponentHeatMap();
+    //     validMoves = validMoves.filter(
+    //       (move) => playersMap[move[0]][move[1]] === 0
+    //     );
+    //   }
+    //   return validMoves;
+    // }
+    return currentPiece.getLegalAttackMoves(board);
   }
   private checkVictory() {
     const whiteArmy = this.whitePlayer.getAvailablePieces().size;
     const blackArmy = this.blackPlayer.getAvailablePieces().size;
+    console.log(blackArmy);
+    console.log(this.blackPlayer.getAvailableMoves());
     if (this.whitePlayer.getAvailableMoves() === 0) {
       if (this.whitePlayer.getIsChecked()) {
         console.log("Black Win");
@@ -229,45 +232,46 @@ class GameBoard {
     clonedHeatMap: number[][],
     kingsPosition: [number, number]
   ): [number, number][] {
-    const viableMoves: [number, number][] = [];
-    if (currentPiece instanceof Pawn) {
-      const availableMoves = currentPiece
-        .getValidMoves(clonedBoard)
-        .concat(currentPiece.getValidAttackMoves(clonedBoard));
-      // const availableAttackMoves = currentPiece.getValidAttackMoves(
-      //   currentPiece.getX(),
-      //   currentPiece.getY(),
-      //   clonedBoard
-      // );
-      for (const moves of availableMoves) {
-        clonedHeatMap[moves[0]][moves[1]] = -1;
-        if (clonedHeatMap[kingsPosition[0]][kingsPosition[1]] !== -1) {
-          viableMoves.push(moves);
-        }
-      }
-      return viableMoves;
-    } else {
-      const availableMoves = (currentPiece as incrementalPiece).getValidMoves(
-        clonedBoard
-      );
-      // if (currentPiece instanceof King) {
-      //   availableMoves = availableMoves.filter(
-      //     (move) => clonedHeatMap[move[0]][move[1]] === 0
-      //   );
-      //   if (availableMoves.length !== 0) {
-      //     console.log(clonedBoard);
-      //     console.log(availableMoves);
-      //   }
-      // }
-      // return availableMoves;
-      for (const moves of availableMoves) {
-        clonedHeatMap[moves[0]][moves[1]] = -1;
-        if (clonedHeatMap[kingsPosition[0]][kingsPosition[1]] !== -1) {
-          viableMoves.push(moves);
-        }
-      }
-      return viableMoves;
-    }
+    // const viableMoves: [number, number][] = [];
+    // if (currentPiece instanceof Pawn) {
+    //   const availableMoves = currentPiece
+    //     .getValidMoves(clonedBoard)
+    //     .concat(currentPiece.getValidAttackMoves(clonedBoard));
+    //   // const availableAttackMoves = currentPiece.getValidAttackMoves(
+    //   //   currentPiece.getX(),
+    //   //   currentPiece.getY(),
+    //   //   clonedBoard
+    //   // );
+    //   for (const moves of availableMoves) {
+    //     clonedHeatMap[moves[0]][moves[1]] = -1;
+    //     if (clonedHeatMap[kingsPosition[0]][kingsPosition[1]] !== -1) {
+    //       viableMoves.push(moves);
+    //     }
+    //   }
+    //   return viableMoves;
+    // } else {
+    //   const availableMoves = (currentPiece as incrementalPiece).getValidMoves(
+    //     clonedBoard
+    //   );
+    //   // if (currentPiece instanceof King) {
+    //   //   availableMoves = availableMoves.filter(
+    //   //     (move) => clonedHeatMap[move[0]][move[1]] === 0
+    //   //   );
+    //   //   if (availableMoves.length !== 0) {
+    //   //     console.log(clonedBoard);
+    //   //     console.log(availableMoves);
+    //   //   }
+    //   // }
+    //   // return availableMoves;
+    //   for (const moves of availableMoves) {
+    //     clonedHeatMap[moves[0]][moves[1]] = -1;
+    //     if (clonedHeatMap[kingsPosition[0]][kingsPosition[1]] !== -1) {
+    //       viableMoves.push(moves);
+    //     }
+    //   }
+    //   return viableMoves;
+    return currentPiece.getValidMoves(clonedBoard);
+    // }
   }
   private generateEmptyHeatMap(): number[][] {
     const tempHeatMap: number[][] = new Array(this.BOARD_COLS);
@@ -463,7 +467,7 @@ class GameBoard {
     for (let i = 0; i < this.board.length; i++) {
       for (let currentPiece of this.board[i]) {
         if (typeof currentPiece === "number") continue;
-        const legalMoves = this.getLegalMoves(currentPiece);
+        const legalMoves = currentPiece.getValidMoves(this.board);
         for (const possibleMove of legalMoves) {
           const newSquare = this.board[possibleMove[0]][possibleMove[1]];
           if (typeof newSquare === "number") continue;
@@ -519,33 +523,52 @@ class GameBoard {
   private updateAvailableMoves(): void {
     this.generateHeatMaps();
     this.totalPieces.forEach((piece) => {
+      let availableMoves = piece.getValidMoves(this.board);
+      if (piece instanceof King) {
+        const playersMap = piece.getIsWhite()
+          ? this.whitePlayer.getOpponentHeatMap()
+          : this.blackPlayer.getOpponentHeatMap();
+        availableMoves = availableMoves.filter(
+          (move) => playersMap[move[0]][move[1]] === 0
+        );
+      }
+      piece.setAvailableMoves(availableMoves);
       if (piece instanceof Pawn) {
-        const availableMoves = piece.getValidMoves(this.board);
-        const availableAttackMoves = piece.getValidAttackMoves(this.board);
-        piece.setAvailableMoves(availableMoves);
+        const availableAttackMoves = piece.getLegalAttackMoves(this.board);
         piece.setAvailableAttackMoves(availableAttackMoves);
-        piece.concatMoves();
-      } else if (
-        piece instanceof incrementalPiece ||
-        piece instanceof positionalPiece
-      ) {
-        let availableMoves = piece.getValidMoves(this.board);
-
-        //  Might not need this
-        if (piece instanceof King) {
-          const playersMap = piece.getIsWhite()
-            ? this.whitePlayer.getOpponentHeatMap()
-            : this.blackPlayer.getOpponentHeatMap();
-          availableMoves = availableMoves.filter(
-            (move) => playersMap[move[0]][move[1]] === 0
-          );
-        }
-        piece.setAvailableMoves(availableMoves);
       }
       piece.getIsWhite()
         ? this.whitePlayer.addPiece(piece)
         : this.blackPlayer.addPiece(piece);
     });
+    // this.totalPieces.forEach((piece) => {
+    //   if (piece instanceof Pawn) {
+    //     const availableMoves = piece.getValidMoves(this.board);
+    //     const availableAttackMoves = piece.getValidAttackMoves(this.board);
+    //     piece.setAvailableMoves(availableMoves);
+    //     piece.setAvailableAttackMoves(availableAttackMoves);
+    //     piece.concatMoves();
+    //   } else if (
+    //     piece instanceof incrementalPiece ||
+    //     piece instanceof positionalPiece
+    //   ) {
+    //     let availableMoves = piece.getValidMoves(this.board);
+
+    //     //  Might not need this
+    // if (piece instanceof King) {
+    //   const playersMap = piece.getIsWhite()
+    //     ? this.whitePlayer.getOpponentHeatMap()
+    //     : this.blackPlayer.getOpponentHeatMap();
+    //   availableMoves = availableMoves.filter(
+    //     (move) => playersMap[move[0]][move[1]] === 0
+    //   );
+    // }
+    //     piece.setAvailableMoves(availableMoves);
+    //   }
+    //   piece.getIsWhite()
+    //     ? this.whitePlayer.addPiece(piece)
+    //     : this.blackPlayer.addPiece(piece);
+    // });
     this.whitePlayer.updateMoves();
     this.blackPlayer.updateMoves();
     this.makeMoves();

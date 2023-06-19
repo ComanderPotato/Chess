@@ -58,81 +58,122 @@ export class Piece {
     setLegalMoves(newLegalMoves) {
         this.legalMoves = newLegalMoves;
     }
+    getValidMoves(board) {
+        const validMoves = [];
+        if (this instanceof incrementalPiece) {
+            if (this instanceof Pawn) {
+                for (const move of this.getlegalMoves()) {
+                    const newPositionX = this.getX() + move[0];
+                    const newPositionY = this.getY() + move[1];
+                    if (this.isValid(newPositionX, newPositionY)) {
+                        const newPosition = board[newPositionX][newPositionY];
+                        if (typeof newPosition === "number") {
+                            validMoves.push([newPositionX, newPositionY]);
+                        }
+                        else {
+                            break;
+                        }
+                    }
+                }
+                for (const move of this.getAttacks()) {
+                    const newPositionX = this.getX() + move[0];
+                    const newPositionY = this.getY() + move[1];
+                    if (this.isValid(newPositionX, newPositionY)) {
+                        const newPosition = board[newPositionX][newPositionY];
+                        if (newPosition instanceof Piece &&
+                            !this.isSameColor(newPosition)) {
+                            validMoves.push([newPositionX, newPositionY]);
+                        }
+                    }
+                }
+                return validMoves;
+            }
+            for (const moves of this.getlegalMoves()) {
+                let newPositionX = this.getX() + moves[0];
+                let newPositionY = this.getY() + moves[1];
+                while (this.isValid(newPositionX, newPositionY)) {
+                    const newPosition = board[newPositionX][newPositionY];
+                    if (typeof newPosition === "number" ||
+                        !this.isSameColor(newPosition)) {
+                        validMoves.push([newPositionX, newPositionY]);
+                    }
+                    if (newPosition instanceof Piece) {
+                        break;
+                    }
+                    newPositionX += moves[0];
+                    newPositionY += moves[1];
+                }
+            }
+        }
+        else {
+            for (const moves of this.getlegalMoves()) {
+                const newPositionX = this.getX() + moves[0];
+                const newPositionY = this.getY() + moves[1];
+                if (this.isValid(newPositionX, newPositionY)) {
+                    const newPosition = board[newPositionX][newPositionY];
+                    if (typeof newPosition === "number" ||
+                        !this.isSameColor(newPosition)) {
+                        validMoves.push([newPositionX, newPositionY]);
+                    }
+                }
+            }
+        }
+        return validMoves;
+    }
+    getLegalAttackMoves(board) {
+        const validMoves = [];
+        if (this instanceof incrementalPiece) {
+            if (this instanceof Pawn) {
+                for (const move of this.getAttacks()) {
+                    const newPositionX = this.getX() + move[0];
+                    const newPositionY = this.getY() + move[1];
+                    if (this.isValid(newPositionX, newPositionY)) {
+                        validMoves.push([newPositionX, newPositionY]);
+                    }
+                }
+                return validMoves;
+            }
+            for (const moves of this.getlegalMoves()) {
+                let newPositionX = this.getX() + moves[0];
+                let newPositionY = this.getY() + moves[1];
+                while (this.isValid(newPositionX, newPositionY)) {
+                    const newPosition = board[newPositionX][newPositionY];
+                    if (typeof newPosition === "number" ||
+                        this.isSameColor(newPosition)) {
+                        validMoves.push([newPositionX, newPositionY]);
+                    }
+                    if (newPosition instanceof Piece && !(newPosition instanceof King)) {
+                        break;
+                    }
+                    newPositionX += moves[0];
+                    newPositionY += moves[1];
+                }
+            }
+        }
+        else {
+            for (const moves of this.getlegalMoves()) {
+                const newPositionX = this.getX() + moves[0];
+                const newPositionY = this.getY() + moves[1];
+                if (this.isValid(newPositionX, newPositionY)) {
+                    const newPosition = board[newPositionX][newPositionY];
+                    if (typeof newPosition === "number" ||
+                        this.isSameColor(newPosition)) {
+                        validMoves.push([newPositionX, newPositionY]);
+                    }
+                }
+            }
+        }
+        return validMoves;
+    }
 }
 export class positionalPiece extends Piece {
     constructor(x, y, isWhite, id, legalMoves, image, coords) {
         super(x, y, isWhite, id, legalMoves, image, coords, "positional");
     }
-    getValidMoves(board) {
-        const validMoves = [];
-        for (const moves of this.getlegalMoves()) {
-            const newPositionX = this.getX() + moves[0];
-            const newPositionY = this.getY() + moves[1];
-            if (this.isValid(newPositionX, newPositionY)) {
-                const newPosition = board[newPositionX][newPositionY];
-                if (typeof newPosition === "number" || !this.isSameColor(newPosition)) {
-                    validMoves.push([newPositionX, newPositionY]);
-                }
-            }
-        }
-        return validMoves;
-    }
-    getLegalAttackMoves(board) {
-        const validMoves = [];
-        for (const moves of this.getlegalMoves()) {
-            const newPositionX = this.getX() + moves[0];
-            const newPositionY = this.getY() + moves[1];
-            if (this.isValid(newPositionX, newPositionY)) {
-                const newPosition = board[newPositionX][newPositionY];
-                if (typeof newPosition === "number" || this.isSameColor(newPosition)) {
-                    validMoves.push([newPositionX, newPositionY]);
-                }
-            }
-        }
-        return validMoves;
-    }
 }
 export class incrementalPiece extends Piece {
     constructor(x, y, isWhite, id, legalMoves, image, coords) {
         super(x, y, isWhite, id, legalMoves, image, coords, "incremental");
-    }
-    getValidMoves(board) {
-        const validMoves = [];
-        for (const moves of this.getlegalMoves()) {
-            let newPositionX = this.getX() + moves[0];
-            let newPositionY = this.getY() + moves[1];
-            while (this.isValid(newPositionX, newPositionY)) {
-                const newPosition = board[newPositionX][newPositionY];
-                if (typeof newPosition === "number" || !this.isSameColor(newPosition)) {
-                    validMoves.push([newPositionX, newPositionY]);
-                }
-                if (newPosition instanceof Piece) {
-                    break;
-                }
-                newPositionX += moves[0];
-                newPositionY += moves[1];
-            }
-        }
-        return validMoves;
-    }
-    getLegalAttackMoves(board) {
-        const validMoves = [];
-        for (const moves of this.getlegalMoves()) {
-            let newPositionX = this.getX() + moves[0];
-            let newPositionY = this.getY() + moves[1];
-            while (this.isValid(newPositionX, newPositionY)) {
-                const newPosition = board[newPositionX][newPositionY];
-                if (typeof newPosition === "number" || this.isSameColor(newPosition)) {
-                    validMoves.push([newPositionX, newPositionY]);
-                }
-                if (newPosition instanceof Piece) {
-                    break;
-                }
-                newPositionX += moves[0];
-                newPositionY += moves[1];
-            }
-        }
-        return validMoves;
     }
 }
 export class Pawn extends incrementalPiece {
@@ -177,51 +218,12 @@ export class Pawn extends incrementalPiece {
     getHadFirstMove() {
         return this.hadFirstMove;
     }
+    getAttacks() {
+        return this.legalAttackMoves;
+    }
     setHadFirstMove() {
         this.hadFirstMove = true;
         this.setLegalMoves(this.getlegalMoves().slice(0, 1));
-    }
-    getLegalAttackMoves(board) {
-        const validMoves = [];
-        for (const move of this.legalAttackMoves) {
-            const newPositionX = this.getX() + move[0];
-            const newPositionY = this.getY() + move[1];
-            if (this.isValid(newPositionX, newPositionY)) {
-                validMoves.push([newPositionX, newPositionY]);
-            }
-        }
-        return validMoves;
-    }
-    getValidAttackMoves(board) {
-        const validMoves = [];
-        for (const move of this.legalAttackMoves) {
-            const newPositionX = this.getX() + move[0];
-            const newPositionY = this.getY() + move[1];
-            if (this.isValid(newPositionX, newPositionY)) {
-                const newPosition = board[newPositionX][newPositionY];
-                if (newPosition instanceof Piece && !this.isSameColor(newPosition)) {
-                    validMoves.push([newPositionX, newPositionY]);
-                }
-            }
-        }
-        return validMoves;
-    }
-    getValidMoves(board) {
-        const validMoves = [];
-        for (const move of this.getlegalMoves()) {
-            const newPositionX = this.getX() + move[0];
-            const newPositionY = this.getY() + move[1];
-            if (this.isValid(newPositionX, newPositionY)) {
-                const newPosition = board[newPositionX][newPositionY];
-                if (typeof newPosition === "number") {
-                    validMoves.push([newPositionX, newPositionY]);
-                }
-                else {
-                    break;
-                }
-            }
-        }
-        return validMoves;
     }
 }
 export class Queen extends incrementalPiece {
