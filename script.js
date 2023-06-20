@@ -126,8 +126,8 @@ class GameBoard {
     checkVictory() {
         const whiteArmy = this.whitePlayer.getAvailablePieces().size;
         const blackArmy = this.blackPlayer.getAvailablePieces().size;
-        console.log(blackArmy);
-        console.log(this.blackPlayer.getAvailableMoves());
+        // console.log(blackArmy);
+        // console.log(this.blackPlayer.getAvailableMoves());
         if (this.whitePlayer.getAvailableMoves() === 0) {
             if (this.whitePlayer.getIsChecked()) {
                 console.log("Black Win");
@@ -334,13 +334,20 @@ class GameBoard {
         console.log(this.board);
     }
     showMoves(e) {
+        var _a;
+        this.clearSquare();
         if (!e.target || !(e.target instanceof HTMLImageElement))
             return;
         this.clearSquare();
         const currentX = Number(e.target.dataset.x);
         const currentY = Number(e.target.dataset.y);
         const coords = getCoords(currentX, currentY);
+        // this.draggedElement = this.getPieces().get(coords) as Piece;
+        // this.beingDragged = e.target;
         const availableMoves = this.getPieces().get(coords).getAvailableMoves();
+        // console.log(e.target);
+        (_a = document
+            .querySelector(`.chess-piece[data-x="${currentX}"][data-y="${currentY}"]`)) === null || _a === void 0 ? void 0 : _a.classList.add("highlight-box");
         for (const move of availableMoves) {
             document.querySelector(`[data-hint="true"][data-x="${move[0]}"][data-y="${move[1]}"]`).classList.add("visible");
         }
@@ -352,13 +359,9 @@ class GameBoard {
             !(e.target instanceof HTMLDivElement ||
                 e.target instanceof HTMLImageElement) ||
             !this.draggedElement ||
-            !this.beingDragged
-        // ||
-        // !(
-        //   (this.whitePlayersTurn && this.draggedElement.getIsWhite()) ||
-        //   (!this.whitePlayersTurn && !this.draggedElement.getIsWhite())
-        // )
-        ) {
+            !this.beingDragged ||
+            !((this.whitePlayersTurn && this.draggedElement.getIsWhite()) ||
+                (!this.whitePlayersTurn && !this.draggedElement.getIsWhite()))) {
             return;
         }
         const newPositionX = Number(e.target.dataset.x);
@@ -586,6 +589,7 @@ class GameBoard {
         piece.addEventListener("dragstart", (e) => board.dragStart(e));
     });
     document.querySelectorAll(".square").forEach((square) => {
+        // square.addEventListener("click", (e) => board.dragDrop(e));
         square.addEventListener("dragover", (e) => board.dragOver(e));
         square.addEventListener("drop", (e) => board.dragDrop(e));
         square.addEventListener("dragleave", (e) => board.dragLeave(e));
