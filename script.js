@@ -1,4 +1,4 @@
-import { Piece, incrementalPiece, positionalPiece, Pawn, King, Knight, Rook, Bishop, Queen, } from "./modules/pieces.js";
+import { Piece, Pawn, King, Knight, Rook, Bishop, Queen, } from "./modules/pieces.js";
 import Player from "./modules/Player.js";
 import getCoords from "./modules/Utils/Coordinates.js";
 class GameBoard {
@@ -8,6 +8,8 @@ class GameBoard {
         this.beingDragged = undefined;
         this.draggedElement = undefined;
         this.clickedElement = undefined;
+        this.selectedElement = undefined;
+        this.selectedPiece = undefined;
         this.BOARD_COLS = 8;
         this.BOARD_ROWS = 8;
         this.board = new Array(this.BOARD_COLS);
@@ -21,6 +23,7 @@ class GameBoard {
         this.nextStack = new Array();
         this.whitePlayersTurn = true;
         this.totalPieces = new Map();
+        this.createGame();
     }
     createBoard(htmlElement) {
         for (let i = 0; i < this.BOARD_COLS; i++) {
@@ -126,76 +129,95 @@ class GameBoard {
     checkVictory() {
         const whiteArmy = this.whitePlayer.getAvailablePieces().size;
         const blackArmy = this.blackPlayer.getAvailablePieces().size;
-        // console.log(blackArmy);
-        // console.log(this.blackPlayer.getAvailableMoves());
+        const winner = document.querySelector(".winner");
         if (this.whitePlayer.getAvailableMoves() === 0) {
             if (this.whitePlayer.getIsChecked()) {
-                console.log("Black Win");
+                winner.textContent = "Black Win";
             }
             else {
-                console.log("Stale mate");
+                winner.textContent = "Stale mate";
             }
         }
         else if (this.blackPlayer.getAvailableMoves() === 0) {
+            winner.textContent = "Hello";
             if (this.blackPlayer.getIsChecked()) {
-                console.log("White Win");
+                winner.textContent = "White Win";
             }
             else {
-                console.log("Stale mate");
+                winner.textContent = "Stale mate";
             }
         }
-        else if (whiteArmy === 2 || blackArmy === 2) {
-            if ((whiteArmy === 1 && blackArmy === 1) ||
-                (whiteArmy === 20 && blackArmy === 1) ||
-                (whiteArmy === 1 && blackArmy === 20)) {
-                console.log("Insufficient material");
-            }
-            else {
-            }
-            /*
-            King vs king
-            King + minor (bishop or knight) piece vs king
-            Lone king vs all the pieces
-            King + two knights vs king
-            King + minor piece vs king + minor piece
-            */
-        }
-    }
-    makeMoves() {
-        // this.generateHeatMaps();
-        for (const piece of this.totalPieces.values()) {
-            const viableMoves = [];
-            for (const move of piece.getAvailableMoves()) {
-                const clonedMap = structuredClone(piece.getIsWhite()
-                    ? this.whitePlayer.getOpponentHeatMap()
-                    : this.blackPlayer.getOpponentHeatMap());
-                if (piece instanceof King) {
-                    if (clonedMap[move[0]][move[1]] === 0)
-                        viableMoves.push(move);
-                }
-                else {
-                    const kingsPosition = structuredClone(piece.getIsWhite()
-                        ? this.whitePlayer.getKingsPosition()
-                        : this.blackPlayer.getKingsPosition());
-                    const clonedBoard = this.duplicateBoard();
-                    clonedBoard[piece.getX()][piece.getY()] = 0;
-                    clonedBoard[move[0]][move[1]] = piece;
-                    for (let i = 0; i < clonedBoard.length; i++) {
-                        for (const square of clonedBoard[i]) {
-                            if (!(square instanceof Piece) || piece.isSameColor(square))
-                                continue;
-                            this.getGeneratedMoves(square, clonedBoard, clonedMap, kingsPosition).forEach((move) => {
-                                clonedMap[move[0]][move[1]] = -1;
-                            });
-                        }
-                    }
-                    if (clonedMap[kingsPosition[0]][kingsPosition[1]] !== -1) {
-                        viableMoves.push(move);
-                    }
-                }
-            }
-            this.updatePiecesMoves(piece, viableMoves);
-        }
+        // else {
+        //   if (
+        //     (whiteArmy === 1 && blackArmy === 1) ||
+        //     (whiteArmy === 16 && blackArmy === 1) ||
+        //     (whiteArmy === 1 && blackArmy === 16)
+        //   ) {
+        //     winner!.textContent = "Insufficient material";
+        //   }
+        //   else {
+        //     const whiteMap = new Map<string, number>();
+        //     const blackMap = new Map<string, number>();
+        //     for (const piece of this.whitePlayer.getAvailablePieces()) {
+        //       whiteMap.set(piece[1].getID(), (whiteMap.get("a") ?? 0) + 1);
+        //     }
+        //     for (const piece of this.blackPlayer.getAvailablePieces()) {
+        //       blackMap.set(piece[1].getID(), (blackMap.get("a") ?? 0) + 1);
+        //     }
+        //     const whiteKing =
+        //       typeof whiteMap.get("king") === "undefined"
+        //         ? 0
+        //         : whiteMap.get("king");
+        //     const blackKing =
+        //       typeof blackMap.get("king") === "undefined"
+        //         ? 0
+        //         : blackMap.get("king");
+        //     const whiteBishop =
+        //       typeof whiteMap.get("bishop") === "undefined"
+        //         ? 0
+        //         : whiteMap.get("bishop");
+        //     const blackBishop =
+        //       typeof blackMap.get("bishop") === "undefined"
+        //         ? 0
+        //         : blackMap.get("bishop");
+        //     const whiteKnight =
+        //       typeof whiteMap.get("knight") === "undefined"
+        //         ? 0
+        //         : whiteMap.get("knight");
+        //     const blackKnight =
+        //       typeof blackMap.get("knight") === "undefined"
+        //         ? 0
+        //         : blackMap.get("knight");
+        //     const blackMinor = blackKnight! + blackBishop!;
+        //     const whiteMinor = whiteKnight! + whiteBishop!;
+        //     console.log(blackMap);
+        //     if (
+        //       (whiteKing === 1 && whiteMinor === 1 && blackKing === 1) ||
+        //       (blackKing === 1 && blackMinor === 1 && whiteKing === 1)
+        //     ) {
+        //       winner!.textContent = "Insufficient material";
+        //     } else if (
+        //       (whiteKing === 1 && whiteKnight === 2 && blackKing === 1) ||
+        //       (blackKing === 1 && blackKnight === 2 && whiteKing === 1)
+        //     ) {
+        //       winner!.textContent = "Insufficient material";
+        //     } else if (
+        //       whiteKing === 1 &&
+        //       whiteMinor === 1 &&
+        //       blackKing === 1 &&
+        //       blackMinor === 1
+        //     ) {
+        //       winner!.textContent = "Insufficient material";
+        //     }
+        //   }
+        //   /*
+        //   King vs king
+        //   King + minor (bishop or knight) piece vs king
+        //   Lone king vs all the pieces
+        //   King + two knights vs king
+        //   King + minor piece vs king + minor piece
+        //   */
+        // }
     }
     getGeneratedMoves(currentPiece, clonedBoard, clonedHeatMap, kingsPosition) {
         // const viableMoves: [number, number][] = [];
@@ -255,38 +277,40 @@ class GameBoard {
             tempWhiteHeatMap[blackKingsPosition[0]][blackKingsPosition[1]] = 1;
         this.totalPieces.forEach((piece) => {
             if (piece.getIsWhite()) {
-                if (piece instanceof incrementalPiece) {
-                    piece.getLegalAttackMoves(this.board).forEach((move) => {
-                        tempWhiteHeatMap[move[0]][move[1]] = -1;
-                    });
-                }
-                else if (piece instanceof positionalPiece) {
-                    piece.getLegalAttackMoves(this.board).forEach((move) => {
-                        tempWhiteHeatMap[move[0]][move[1]] = -1;
-                    });
-                }
-                else if (piece instanceof Pawn) {
-                    piece.getLegalAttackMoves(this.board).forEach((move) => {
-                        tempWhiteHeatMap[move[0]][move[1]] = -1;
-                    });
-                }
+                piece.getLegalAttackMoves(this.board).forEach((move) => {
+                    tempWhiteHeatMap[move[0]][move[1]] = -1;
+                });
+                // if (piece instanceof incrementalPiece) {
+                //   piece.getLegalAttackMoves(this.board).forEach((move) => {
+                //     tempWhiteHeatMap[move[0]][move[1]] = -1;
+                //   });
+                // } else if (piece instanceof positionalPiece) {
+                //   piece.getLegalAttackMoves(this.board).forEach((move) => {
+                //     tempWhiteHeatMap[move[0]][move[1]] = -1;
+                //   });
+                // } else if (piece instanceof Pawn) {
+                //   piece.getLegalAttackMoves(this.board).forEach((move) => {
+                //     tempWhiteHeatMap[move[0]][move[1]] = -1;
+                //   });
+                // }
             }
             else {
-                if (piece instanceof incrementalPiece) {
-                    piece.getLegalAttackMoves(this.board).forEach((move) => {
-                        tempBlackHeatMap[move[0]][move[1]] = -1;
-                    });
-                }
-                else if (piece instanceof positionalPiece) {
-                    piece.getLegalAttackMoves(this.board).forEach((move) => {
-                        tempBlackHeatMap[move[0]][move[1]] = -1;
-                    });
-                }
-                else if (piece instanceof Pawn) {
-                    piece.getLegalAttackMoves(this.board).forEach((move) => {
-                        tempBlackHeatMap[move[0]][move[1]] = -1;
-                    });
-                }
+                piece.getLegalAttackMoves(this.board).forEach((move) => {
+                    tempBlackHeatMap[move[0]][move[1]] = -1;
+                });
+                // if (piece instanceof incrementalPiece) {
+                //   piece.getLegalAttackMoves(this.board).forEach((move) => {
+                //     tempBlackHeatMap[move[0]][move[1]] = -1;
+                //   });
+                // } else if (piece instanceof positionalPiece) {
+                //   piece.getLegalAttackMoves(this.board).forEach((move) => {
+                //     tempBlackHeatMap[move[0]][move[1]] = -1;
+                //   });
+                // } else if (piece instanceof Pawn) {
+                //   piece.getLegalAttackMoves(this.board).forEach((move) => {
+                //     tempBlackHeatMap[move[0]][move[1]] = -1;
+                //   });
+                // }
             }
         });
         tempWhiteHeatMap[blackKingsPosition[0]][blackKingsPosition[1]] = 1;
@@ -334,34 +358,117 @@ class GameBoard {
         console.log(this.board);
     }
     showMoves(e) {
-        var _a;
+        var _a, _b, _c;
         this.clearSquare();
         if (!e.target || !(e.target instanceof HTMLImageElement))
             return;
-        this.clearSquare();
         const currentX = Number(e.target.dataset.x);
         const currentY = Number(e.target.dataset.y);
         const coords = getCoords(currentX, currentY);
+        if (this.selectedPiece) {
+            if ((this.selectedPiece.getIsWhite() &&
+                !((_a = this.getPieces().get(coords)) === null || _a === void 0 ? void 0 : _a.getIsWhite())) ||
+                (!this.selectedPiece.getIsWhite() &&
+                    ((_b = this.getPieces().get(coords)) === null || _b === void 0 ? void 0 : _b.getIsWhite()))) {
+                this.movePiece(e);
+                return;
+            }
+        }
+        this.selectedPiece = this.getPieces().get(coords);
+        this.selectedElement = document.querySelector(`.chess-piece[data-x="${currentX}"][data-y="${currentY}"]`);
         // this.draggedElement = this.getPieces().get(coords) as Piece;
         // this.beingDragged = e.target;
         const availableMoves = this.getPieces().get(coords).getAvailableMoves();
-        // console.log(e.target);
-        (_a = document
-            .querySelector(`.chess-piece[data-x="${currentX}"][data-y="${currentY}"]`)) === null || _a === void 0 ? void 0 : _a.classList.add("highlight-box");
+        (_c = document
+            .querySelector(`.chess-piece[data-x="${currentX}"][data-y="${currentY}"]`)) === null || _c === void 0 ? void 0 : _c.classList.add("highlight-box");
         for (const move of availableMoves) {
-            document.querySelector(`[data-hint="true"][data-x="${move[0]}"][data-y="${move[1]}"]`).classList.add("visible");
+            const className = this.board[move[0]][move[1]] instanceof Piece
+                ? "hint--large"
+                : "hint--small";
+            document.querySelector(`[data-hint="true"][data-x="${move[0]}"][data-y="${move[1]}"]`).classList.add(className);
         }
     }
-    dragDrop(e) {
+    movePiece(e) {
+        console.log(e.target instanceof HTMLImageElement);
+        if (e.target instanceof HTMLImageElement ||
+            typeof this.selectedPiece === "undefined" ||
+            !this.selectedPiece ||
+            typeof this.selectedElement === "undefined" ||
+            !this.selectedElement ||
+            !e.target ||
+            typeof e.target === "undefined" ||
+            !(e.target instanceof HTMLDivElement)) {
+            return;
+        }
+        this.clearSquare();
+        const newPositionX = Number(e.target.dataset.x);
+        const newPositionY = Number(e.target.dataset.y);
+        const oldPositionX = Number(this.selectedElement.dataset.x);
+        const oldPositionY = Number(this.selectedElement.dataset.y);
+        const newBoardElement = document.querySelector(`[data-x="${newPositionX}"][data-y="${newPositionY}"]`);
+        const availabeMoves = this.totalPieces
+            .get(this.selectedPiece.getCoords())
+            .getAvailableMoves();
+        if (typeof availabeMoves === "undefined")
+            return;
+        for (const moves of availabeMoves) {
+            if (moves[0] === newPositionX && moves[1] === newPositionY) {
+                if (this.whitePlayer.getIsChecked() ||
+                    this.blackPlayer.getIsChecked()) {
+                    this.whitePlayer.setIsChecked(false);
+                    this.blackPlayer.setIsChecked(false);
+                }
+                const newBoardPosition = this.board[newPositionX][newPositionY];
+                this.board[newPositionX][newPositionY] = this.selectedPiece;
+                this.board[oldPositionX][oldPositionY] = 0;
+                this.selectedPiece.setX(newPositionX);
+                this.selectedPiece.setY(newPositionY);
+                this.updatePiece(this.selectedPiece);
+                this.selectedPiece.setCoords(getCoords(newPositionX, newPositionY));
+                if (typeof newBoardPosition === "number") {
+                    this.isChecked() ? this.checkedAudio.play() : this.placeAudio.play();
+                }
+                else {
+                    const enemyElement = document.querySelector(`.chess-piece[data-x="${newPositionX}"][data-y="${newPositionY}"]`);
+                    this.removePiece(newBoardPosition);
+                    enemyElement.remove();
+                    this.isChecked()
+                        ? this.checkedAudio.play()
+                        : this.captureAudio.play();
+                }
+                [this.selectedElement.dataset.x, this.selectedElement.dataset.y] = [
+                    String(newPositionX),
+                    String(newPositionY),
+                ];
+                newBoardElement.insertAdjacentElement("beforeend", this.selectedElement);
+                if (this.selectedPiece instanceof Pawn) {
+                    this.selectedPiece.setHadFirstMove();
+                }
+                if (this.selectedPiece instanceof King) {
+                    this.updateKingPosition(this.selectedPiece);
+                }
+                this.updateAvailableMoves();
+                this.whitePlayersTurn = !this.whitePlayersTurn;
+                this.updateState();
+                this.selectedElement = undefined;
+                this.selectedPiece = undefined;
+            }
+        }
+    }
+    dropPiece(e) {
         this.clearSquare();
         this.dragLeave(e);
         if (!e.target ||
             !(e.target instanceof HTMLDivElement ||
                 e.target instanceof HTMLImageElement) ||
             !this.draggedElement ||
-            !this.beingDragged ||
-            !((this.whitePlayersTurn && this.draggedElement.getIsWhite()) ||
-                (!this.whitePlayersTurn && !this.draggedElement.getIsWhite()))) {
+            !this.beingDragged
+        // ||
+        // !(
+        //   (this.whitePlayersTurn && this.draggedElement.getIsWhite()) ||
+        //   (!this.whitePlayersTurn && !this.draggedElement.getIsWhite())
+        // )
+        ) {
             return;
         }
         const newPositionX = Number(e.target.dataset.x);
@@ -478,15 +585,51 @@ class GameBoard {
         //   ? this.whitePlayer.updatePiece(piece)
         //   : this.blackPlayer.updatePiece(piece);
     }
+    makeMoves() {
+        // this.generateHeatMaps();
+        for (const piece of this.totalPieces.values()) {
+            const viableMoves = [];
+            for (const move of piece.getAvailableMoves()) {
+                const clonedMap = structuredClone(piece.getIsWhite()
+                    ? this.whitePlayer.getOpponentHeatMap()
+                    : this.blackPlayer.getOpponentHeatMap());
+                if (piece instanceof King) {
+                    if (clonedMap[move[0]][move[1]] === 0)
+                        viableMoves.push(move);
+                }
+                else {
+                    const kingsPosition = structuredClone(piece.getIsWhite()
+                        ? this.whitePlayer.getKingsPosition()
+                        : this.blackPlayer.getKingsPosition());
+                    const clonedBoard = this.duplicateBoard();
+                    clonedBoard[piece.getX()][piece.getY()] = 0;
+                    clonedBoard[move[0]][move[1]] = piece;
+                    for (let i = 0; i < clonedBoard.length; i++) {
+                        for (const square of clonedBoard[i]) {
+                            if (!(square instanceof Piece) || piece.isSameColor(square))
+                                continue;
+                            this.getGeneratedMoves(square, clonedBoard, clonedMap, kingsPosition).forEach((move) => {
+                                clonedMap[move[0]][move[1]] = -1;
+                            });
+                        }
+                    }
+                    if (clonedMap[kingsPosition[0]][kingsPosition[1]] !== -1) {
+                        viableMoves.push(move);
+                    }
+                }
+                this.updatePiecesMoves(piece, viableMoves);
+            }
+        }
+    }
     updateAvailableMoves() {
         this.generateHeatMaps();
         this.totalPieces.forEach((piece) => {
             let availableMoves = piece.getValidMoves(this.board);
             if (piece instanceof King) {
-                const playersMap = piece.getIsWhite()
+                const opponentsHeatMap = piece.getIsWhite()
                     ? this.whitePlayer.getOpponentHeatMap()
                     : this.blackPlayer.getOpponentHeatMap();
-                availableMoves = availableMoves.filter((move) => playersMap[move[0]][move[1]] === 0);
+                availableMoves = availableMoves.filter((move) => opponentsHeatMap[move[0]][move[1]] === 0);
             }
             piece.setAvailableMoves(availableMoves);
             if (piece instanceof Pawn) {
@@ -527,6 +670,8 @@ class GameBoard {
         this.whitePlayer.updateMoves();
         this.blackPlayer.updateMoves();
         this.makeMoves();
+        this.whitePlayer.updateMoves();
+        this.blackPlayer.updateMoves();
         this.checkVictory();
     }
     dragEnter(e) {
@@ -542,7 +687,8 @@ class GameBoard {
         document
             .querySelectorAll(`[data-hint="true"], .chess-piece`)
             .forEach((s) => {
-            s.classList.remove("visible");
+            s.classList.remove("hint--large");
+            s.classList.remove("hint--small");
             s.classList.remove("highlight-box");
         });
     }
@@ -578,23 +724,50 @@ class GameBoard {
         const duplicateBoard = this.board.map((row) => [...row]);
         return duplicateBoard;
     }
+    createGame() {
+        const gameBoard = document.querySelector(".gameBoard");
+        this.createBoard(gameBoard);
+        this.createPieces();
+        document.querySelectorAll(".chess-piece").forEach((piece) => {
+            piece.addEventListener("click", this.showMoves.bind(this));
+            piece.addEventListener("dragstart", this.dragStart.bind(this));
+        });
+        document.querySelectorAll(".square").forEach((square) => {
+            square.addEventListener("click", this.movePiece.bind(this));
+            square.addEventListener("dragover", this.dragOver.bind(this));
+            square.addEventListener("drop", this.dropPiece.bind(this));
+            square.addEventListener("dragleave", this.dragLeave.bind(this));
+            square.addEventListener("dragenter", this.dragEnter.bind(this));
+        });
+        // document.querySelectorAll(".chess-piece").forEach((piece) => {
+        //   piece.addEventListener("click", (e) => this.showMoves(e));
+        //   piece.addEventListener("dragstart", (e) => this.dragStart(e));
+        // });
+        // document.querySelectorAll(".square").forEach((square) => {
+        //   square.addEventListener("click", (e) => this.movePiece(e));
+        //   square.addEventListener("dragover", (e) => this.dragOver(e));
+        //   square.addEventListener("drop", (e) => this.dropPiece(e));
+        //   square.addEventListener("dragleave", (e) => this.dragLeave(e));
+        //   square.addEventListener("dragenter", (e) => this.dragEnter(e));
+        // });
+    }
 }
 (function () {
-    const gameBoard = document.querySelector(".gameBoard");
     const board = new GameBoard();
-    board.createBoard(gameBoard);
-    board.createPieces();
-    document.querySelectorAll(".chess-piece").forEach((piece) => {
-        piece.addEventListener("click", (e) => board.showMoves(e));
-        piece.addEventListener("dragstart", (e) => board.dragStart(e));
-    });
-    document.querySelectorAll(".square").forEach((square) => {
-        // square.addEventListener("click", (e) => board.dragDrop(e));
-        square.addEventListener("dragover", (e) => board.dragOver(e));
-        square.addEventListener("drop", (e) => board.dragDrop(e));
-        square.addEventListener("dragleave", (e) => board.dragLeave(e));
-        square.addEventListener("dragenter", (e) => board.dragEnter(e));
-    });
+    // const gameBoard = document.querySelector(".gameBoard") as HTMLDivElement;
+    // board.createBoard(gameBoard);
+    // board.createPieces();
+    // document.querySelectorAll(".chess-piece").forEach((piece) => {
+    //   piece.addEventListener("click", (e) => board.showMoves(e));
+    //   piece.addEventListener("dragstart", (e) => board.dragStart(e));
+    // });
+    // document.querySelectorAll(".square").forEach((square) => {
+    //   square.addEventListener("click", (e) => board.movePiece(e));
+    //   square.addEventListener("dragover", (e) => board.dragOver(e));
+    //   square.addEventListener("drop", (e) => board.dropPiece(e));
+    //   square.addEventListener("dragleave", (e) => board.dragLeave(e));
+    //   square.addEventListener("dragenter", (e) => board.dragEnter(e));
+    // });
     const next = document
         .querySelector(".next")
         .addEventListener("click", board.nextState);

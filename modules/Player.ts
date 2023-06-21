@@ -21,15 +21,17 @@ export default class Player {
     this.availablePieces.delete(oldCoords);
     const newCoords: string = getCoords(piece.getX(), piece.getY());
     this.availablePieces.set(newCoords, piece);
-    this.updateMoves();
+    this.availableMoves += piece.getAvailableMoves().length;
   }
   public removePiece(piece: Piece): void {
     this.availablePieces.delete(piece.getCoords());
     this.updateMoves();
   }
+  // public resetAvailableMoves(): void {
+  //   this.availableMoves = 0;
+  // }
   public updateMoves(): void {
     let updatedMoves = 0;
-
     this.availablePieces.forEach(
       (piece) => (updatedMoves += piece.getAvailableMoves().length)
     );
