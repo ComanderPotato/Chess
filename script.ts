@@ -11,6 +11,12 @@ import {
 } from "./modules/pieces.js";
 import Player from "./modules/Player.js";
 import getCoords from "./modules/Utils/Coordinates.js";
+
+interface Coords {
+  x: number;
+  y: number;
+}
+
 class GameBoard {
   private whitePlayer: Player = new Player(true, [7, 4]);
   private blackPlayer: Player = new Player(false, [0, 4]);
@@ -56,6 +62,7 @@ class GameBoard {
         if ((i + j) % 2 !== 0) square.classList.add("square--off-color");
         square.dataset.x = hintSquare.dataset.x = String(i);
         square.dataset.y = hintSquare.dataset.y = String(j);
+        square.dataset.isMoveableTo = "false";
         hintSquare.dataset.hint = "true";
         row.insertAdjacentElement("beforeend", square);
         square.insertAdjacentElement("beforeend", hintSquare);
@@ -387,32 +394,37 @@ class GameBoard {
   viewBoard() {
     console.log(this.board);
   }
+  private selectPiece(e: Event) {
+    if (!e.target || !(e.target instanceof HTMLImageElement)) return;
+    const currentX = Number(e.target.dataset.x);
+    const currentY = Number(e.target.dataset.y);
+    const newPiece = this.board[currentX][currentY];
+    if (
+      this.selectedPiece instanceof Piece &&
+      newPiece instanceof Piece &&
+      this.selectedPiece.getIsWhite() !== newPiece.getIsWhite()
+    ) {
+      // this.capturePiece(newPiece);
+    } else {
+      this.showMoves(e);
+      this.selectedPiece = this.board[currentX][currentY] as Piece;
+      this.selectedElement = document.querySelector(
+        `.chess-piece[data-x="${currentX}"][data-y="${currentY}"]`
+      ) as HTMLImageElement;
+    }
+  }
+  // private capturePiece(oldCoords: Coords, newCoords: Coords) {
+  //   const newPositionX = Number(newCoords.x);
+  //   const newPositionY = Number(newCoords.y);
+  // }
+
   private showMoves(e: Event) {
     this.clearSquare();
     if (!e.target || !(e.target instanceof HTMLImageElement)) return;
     const currentX = Number(e.target.dataset.x);
     const currentY = Number(e.target.dataset.y);
     const coords = getCoords(currentX, currentY);
-    if (this.selectedPiece) {
-      if (
-        (this.selectedPiece.getIsWhite() &&
-          !this.getPieces().get(coords)?.getIsWhite()) ||
-        (!this.selectedPiece.getIsWhite() &&
-          this.getPieces().get(coords)?.getIsWhite())
-      ) {
-        this.movePiece(e);
-        return;
-      }
-    }
-    this.selectedPiece = this.getPieces().get(coords);
-
-    this.selectedElement = document.querySelector(
-      `.chess-piece[data-x="${currentX}"][data-y="${currentY}"]`
-    ) as HTMLImageElement;
-    // this.draggedElement = this.getPieces().get(coords) as Piece;
-    // this.beingDragged = e.target;
     const availableMoves = this.getPieces().get(coords)!.getAvailableMoves();
-
     document
       .querySelector(`.chess-piece[data-x="${currentX}"][data-y="${currentY}"]`)
       ?.classList.add("highlight-box");
@@ -426,10 +438,79 @@ class GameBoard {
           `[data-hint="true"][data-x="${move[0]}"][data-y="${move[1]}"]`
         ) as HTMLDivElement
       ).classList.add(className);
+
+      (
+        document.querySelector(
+          `.square[data-x="${move[0]}"][data-y="${move[1]}"]`
+        ) as HTMLDivElement
+      ).dataset.isMoveableTo = "true";
     }
   }
+
+  private newMove(e: Event) {
+    if (
+      e.target instanceof HTMLImageElement ||
+      !this.selectedPiece ||
+      !this.selectedElement ||
+      !e.target ||
+      !(e.target instanceof HTMLDivElement) ||
+      !(
+        (this.whitePlayersTurn && this.selectedPiece.getIsWhite()) ||
+        (!this.whitePlayersTurn && !this.selectedPiece.getIsWhite())
+      )
+    ) {
+      return;
+    }
+
+    const newPositionX = Number(e.target.dataset.x);
+    const newPositionY = Number(e.target.dataset.y);
+    const oldPositionX = this.selectedPiece.getX();
+    const oldPositionY = this.selectedPiece.getY();
+    const newBoardElement = document.querySelector(
+      `[data-x="${newPositionX}"][data-y="${newPositionY}"]`
+    ) as HTMLDivElement;
+
+    if (JSON.parse(newBoardElement.dataset.isMoveableTo as string)) {
+      this.whitePlayer.setIsChecked(false);
+      this.blackPlayer.setIsChecked(false);
+      const newBoardPosition = this.board[newPositionX][newPositionY];
+
+      this.board[newPositionX][newPositionY] = this.selectedPiece;
+      this.board[oldPositionX][oldPositionY] = 0;
+      this.selectedPiece.setX(newPositionX);
+      this.selectedPiece.setY(newPositionY);
+      this.updatePiece(this.selectedPiece);
+      this.selectedPiece.setCoords(getCoords(newPositionX, newPositionY));
+      if (typeof newBoardPosition === "number") {
+        this.isChecked() ? this.checkedAudio.play() : this.placeAudio.play();
+      } else {
+        const enemyElement = document.querySelector(
+          `.chess-piece[data-x="${newPositionX}"][data-y="${newPositionY}"]`
+        ) as HTMLImageElement;
+        this.removePiece(newBoardPosition);
+        enemyElement.remove();
+        this.isChecked() ? this.checkedAudio.play() : this.captureAudio.play();
+      }
+      [this.selectedElement.dataset.x, this.selectedElement.dataset.y] = [
+        String(newPositionX),
+        String(newPositionY),
+      ];
+      newBoardElement.insertAdjacentElement("beforeend", this.selectedElement!);
+      if (this.selectedPiece instanceof Pawn) {
+        (this.selectedPiece as Pawn).setHadFirstMove();
+      }
+      if (this.selectedPiece instanceof King) {
+        this.updateKingPosition(this.selectedPiece);
+      }
+      this.updateAvailableMoves();
+      this.whitePlayersTurn = !this.whitePlayersTurn;
+      this.updateState();
+      this.selectedElement = undefined;
+      this.selectedPiece = undefined;
+    }
+    this.clearSquare();
+  }
   private movePiece(e: Event) {
-    console.log(e.target instanceof HTMLImageElement);
     if (
       e.target instanceof HTMLImageElement ||
       typeof this.selectedPiece === "undefined" ||
@@ -502,8 +583,6 @@ class GameBoard {
         this.updateAvailableMoves();
         this.whitePlayersTurn = !this.whitePlayersTurn;
         this.updateState();
-        this.selectedElement = undefined;
-        this.selectedPiece = undefined;
       }
     }
   }
@@ -517,12 +596,11 @@ class GameBoard {
         e.target instanceof HTMLImageElement
       ) ||
       !this.draggedElement ||
-      !this.beingDragged
-      // ||
-      // !(
-      //   (this.whitePlayersTurn && this.draggedElement.getIsWhite()) ||
-      //   (!this.whitePlayersTurn && !this.draggedElement.getIsWhite())
-      // )
+      !this.beingDragged ||
+      !(
+        (this.whitePlayersTurn && this.draggedElement.getIsWhite()) ||
+        (!this.whitePlayersTurn && !this.draggedElement.getIsWhite())
+      )
     ) {
       return;
     }
@@ -669,8 +747,8 @@ class GameBoard {
           clonedBoard[piece.getX()][piece.getY()] = 0;
           clonedBoard[move[0]][move[1]] = piece;
 
-          for (let i = 0; i < clonedBoard.length; i++) {
-            for (const square of clonedBoard[i]) {
+          for (const row of clonedBoard) {
+            for (const square of row) {
               if (!(square instanceof Piece) || piece.isSameColor(square))
                 continue;
               this.getGeneratedMoves(
@@ -758,19 +836,27 @@ class GameBoard {
   }
   private clearSquare() {
     document
-      .querySelectorAll(`[data-hint="true"], .chess-piece`)
+      .querySelectorAll(`[data-hint="true"], .chess-piece, .square`)
       .forEach((s) => {
         s.classList.remove("hint--large");
         s.classList.remove("hint--small");
         s.classList.remove("highlight-box");
+        if (s.classList.contains("square")) {
+          (s as HTMLDivElement).dataset.isMoveableTo = "false";
+        }
       });
   }
-  public dragStart(e: any) {
+  public dragStart(e: Event) {
+    if (!e.target || !(e.target instanceof HTMLImageElement)) return;
+    const currentX = Number(e.target.dataset.x);
+    const currentY = Number(e.target.dataset.y);
     this.showMoves(e);
     this.beingDragged = e.target;
-    this.draggedElement = this.board[e.target.dataset.x][
-      e.target.dataset.y
-    ] as Piece;
+    this.draggedElement = this.board[currentX][currentY] as Piece;
+    this.selectedPiece = this.board[currentX][currentY] as Piece;
+    this.selectedElement = document.querySelector(
+      `.chess-piece[data-x="${currentX}"][data-y="${currentY}"]`
+    ) as HTMLImageElement;
   }
   private updateState() {
     const newState = this.duplicateBoard();
@@ -795,7 +881,7 @@ class GameBoard {
     // console.log(nextBoard);
     // }
   }
-  public duplicateBoard(): (number | Piece)[][] {
+  private duplicateBoard(): (number | Piece)[][] {
     const duplicateBoard = this.board.map((row) => [...row]);
     return duplicateBoard;
   }
@@ -805,7 +891,8 @@ class GameBoard {
     this.createBoard(gameBoard);
     this.createPieces();
     document.querySelectorAll(".chess-piece").forEach((piece) => {
-      piece.addEventListener("click", this.showMoves.bind(this));
+      // piece.addEventListener("click", this.showMoves.bind(this));
+      piece.addEventListener("click", this.selectPiece.bind(this));
       piece.addEventListener("dragstart", this.dragStart.bind(this));
     });
     document.querySelectorAll(".square").forEach((square) => {
@@ -815,17 +902,6 @@ class GameBoard {
       square.addEventListener("dragleave", this.dragLeave.bind(this));
       square.addEventListener("dragenter", this.dragEnter.bind(this));
     });
-    // document.querySelectorAll(".chess-piece").forEach((piece) => {
-    //   piece.addEventListener("click", (e) => this.showMoves(e));
-    //   piece.addEventListener("dragstart", (e) => this.dragStart(e));
-    // });
-    // document.querySelectorAll(".square").forEach((square) => {
-    //   square.addEventListener("click", (e) => this.movePiece(e));
-    //   square.addEventListener("dragover", (e) => this.dragOver(e));
-    //   square.addEventListener("drop", (e) => this.dropPiece(e));
-    //   square.addEventListener("dragleave", (e) => this.dragLeave(e));
-    //   square.addEventListener("dragenter", (e) => this.dragEnter(e));
-    // });
   }
 }
 
