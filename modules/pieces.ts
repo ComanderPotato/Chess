@@ -278,6 +278,12 @@ export class Pawn extends incrementalPiece {
     this.hadFirstMove = true;
     this.setLegalMoves(this.getlegalMoves().slice(0, 1));
   }
+  public isPromotable(): boolean {
+    if (this.getX() === 0 || this.getX() === 7) {
+      return true;
+    }
+    return false;
+  }
 }
 export class Queen extends incrementalPiece {
   constructor(x: number, y: number, isWhite: boolean, id: id, coords: string) {

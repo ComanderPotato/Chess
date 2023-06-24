@@ -1,9 +1,14 @@
-* {
+*,
+*:before,
+*:after {
   box-sizing: border-box;
 }
 .gameBoard {
   height: 800px;
   width: 800px;
+  margin: 0;
+  padding: 0;
+  position: relative;
 }
 .row {
   display: flex;
@@ -22,7 +27,7 @@
 
 .chess-piece {
   width: 100%;
-  cursor: move; /* fallback if grab cursor is unsupported */
+  cursor: move;
   cursor: grab;
   cursor: -moz-grab;
   cursor: -webkit-grab;
@@ -65,4 +70,30 @@
   height: 100%;
   background-color: transparent;
   display: block;
+}
+
+.rotate {
+  transform: rotate(180deg);
+}
+.dragged-Piece {
+  position: absolute;
+}
+
+.modal {
+  display: flex;
+  flex-direction: column;
+  width: 100px;
+  position: absolute;
+  background-color: rgb(241, 236, 236);
+  cursor: pointer;
+  z-index: 1;
+  display: none;
+}
+.modal--black,
+.modal--black > .modal-image {
+  transform: rotate(180deg);
+  bottom: 0;
+}
+.visible-modal {
+  display: flex;
 }

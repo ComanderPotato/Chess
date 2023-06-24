@@ -18,39 +18,46 @@ interface Coords {
 }
 
 class GameBoard {
-  private whitePlayer: Player = new Player(true, [7, 4]);
-  private blackPlayer: Player = new Player(false, [0, 4]);
+  private whitePlayer: Player;
+  private blackPlayer: Player;
   private board: (number | Piece)[][];
-  private beingDragged: HTMLImageElement | undefined = undefined;
-  private draggedElement: Piece | undefined = undefined;
-  private clickedElement: Piece | undefined = undefined;
-  private selectedElement: HTMLImageElement | undefined = undefined;
-  private selectedPiece: Piece | undefined = undefined;
-  private placeAudio: HTMLAudioElement;
-  private captureAudio: HTMLAudioElement;
-  private checkedAudio: HTMLAudioElement;
-  private prevStack: (number | Piece)[][][];
-  private nextStack: (number | Piece)[][][];
+  private selectedPiece: Piece | undefined;
+  private selectedElement: HTMLImageElement | undefined;
+  private prevStateStack: (number | Piece)[][][];
+  private nextStateStack: (number | Piece)[][][];
   private whitePlayersTurn: boolean;
-  private BOARD_COLS: number = 8;
-  private BOARD_ROWS: number = 8;
   private totalPieces: Map<string, Piece>;
+  private isBoardRotated: boolean;
+
+  private readonly BOARD_COLS: number = 8;
+  private readonly BOARD_ROWS: number = 8;
+  private readonly placeAudio: HTMLAudioElement = new Audio(
+    "./assets/move-self.mp3"
+  );
+  private readonly captureAudio: HTMLAudioElement = new Audio(
+    "./assets/capture.mp3"
+  );
+  private readonly checkedAudio: HTMLAudioElement = new Audio(
+    "./assets/move-check.mp3"
+  );
   constructor() {
-    this.board = new Array(this.BOARD_COLS);
-    for (let i = 0; i < this.BOARD_ROWS; i++) {
-      this.board[i] = new Array(this.BOARD_ROWS).fill(0);
-    }
-    this.placeAudio = new Audio("./assets/move-self.mp3");
-    this.captureAudio = new Audio("./assets/capture.mp3");
-    this.checkedAudio = new Audio("./assets/move-check.mp3");
-    this.prevStack = new Array();
-    this.nextStack = new Array();
-    this.whitePlayersTurn = true;
-    this.totalPieces = new Map<string, Piece>();
+    this.initializeVariables();
     this.createGame();
   }
 
+  private initializeVariables(): void {
+    this.board = this.createEmptyBoard();
+    this.whitePlayer = new Player(true, [7, 4]);
+    this.blackPlayer = new Player(false, [0, 4]);
+    this.isBoardRotated = false;
+    this.unselectPiece();
+    this.prevStateStack = [];
+    this.nextStateStack = [];
+    this.whitePlayersTurn = true;
+    this.totalPieces = new Map<string, Piece>();
+  }
   createBoard(htmlElement: HTMLDivElement) {
+    console.log(htmlElement);
     for (let i = 0; i < this.BOARD_COLS; i++) {
       const row = document.createElement("div");
       row.classList.add("row");
@@ -156,6 +163,77 @@ class GameBoard {
     //   return validMoves;
     // }
     return currentPiece.getLegalAttackMoves(board);
+  }
+  private promotePawn(e: Event, pawnX: number, pawnY: number): void {
+    console.log(e.target);
+    if (!e.target || !(e.target instanceof HTMLImageElement)) return;
+
+    const pawnToPromote = this.board[pawnX][pawnY] as Piece;
+    let piece;
+    switch (e.target.dataset.piece) {
+      case "queen":
+        piece = new Queen(
+          pawnX,
+          pawnY,
+          pawnToPromote.getIsWhite(),
+          "queen",
+          getCoords(pawnX, pawnY)
+        );
+        break;
+      case "knight":
+        piece = new Knight(
+          pawnX,
+          pawnY,
+          pawnToPromote.getIsWhite(),
+          "knight",
+          getCoords(pawnX, pawnY)
+        );
+        break;
+      case "rook":
+        piece = new Rook(
+          pawnX,
+          pawnY,
+          pawnToPromote.getIsWhite(),
+          "rook",
+          getCoords(pawnX, pawnY)
+        );
+        break;
+      case "bishop":
+        piece = new Bishop(
+          pawnX,
+          pawnY,
+          pawnToPromote.getIsWhite(),
+          "bishop",
+          getCoords(pawnX, pawnY)
+        );
+        break;
+      default:
+        return;
+    }
+
+    const pieceElement = document.createElement("img");
+    pieceElement.dataset.x = String(pawnX);
+    pieceElement.dataset.y = String(pawnY);
+    pieceElement.setAttribute("name", "chess-piece");
+    this.board[pawnX][pawnY] = piece as Piece;
+    pieceElement.src = piece.getImage();
+    pieceElement.classList.add("chess-piece");
+    pieceElement.draggable = true;
+    const pawnElement = document.querySelector(
+      `.chess-piece[data-x="${pawnX}"][data-y="${pawnY}"]`
+    ) as HTMLImageElement;
+    pawnElement.remove();
+    this.removePiece(pawnToPromote);
+    (
+      document.querySelector(
+        `.square[data-x="${pawnX}"][data-y="${pawnY}"]`
+      ) as HTMLDivElement
+    ).insertAdjacentElement("beforeend", pieceElement);
+    console.log(piece);
+    this.addPiece(piece);
+    pieceElement.addEventListener("click", this.selectPiece.bind(this));
+    pieceElement.addEventListener("dragstart", this.dragStart.bind(this));
+    this.closeModal();
   }
   private checkVictory() {
     const whiteArmy = this.whitePlayer.getAvailablePieces().size;
@@ -402,11 +480,13 @@ class GameBoard {
     if (
       this.selectedPiece instanceof Piece &&
       newPiece instanceof Piece &&
-      this.selectedPiece.getIsWhite() !== newPiece.getIsWhite()
+      this.selectedPiece.getIsWhite() !== newPiece.getIsWhite() &&
+      ((this.whitePlayersTurn && !newPiece.getIsWhite()) ||
+        (!this.whitePlayersTurn && newPiece.getIsWhite()))
     ) {
-      // this.capturePiece(newPiece);
+      this.movePiece(e);
     } else {
-      this.showMoves(e);
+      this.showAvailableMoves(e);
       this.selectedPiece = this.board[currentX][currentY] as Piece;
       this.selectedElement = document.querySelector(
         `.chess-piece[data-x="${currentX}"][data-y="${currentY}"]`
@@ -417,8 +497,12 @@ class GameBoard {
   //   const newPositionX = Number(newCoords.x);
   //   const newPositionY = Number(newCoords.y);
   // }
-
-  private showMoves(e: Event) {
+  public highlightLastMove(posX: number, posY: number): void {
+    document
+      .querySelector(`.square[data-x="${posX}"][data-y="${posY}"]`)
+      ?.classList.add("highlight-box");
+  }
+  private showAvailableMoves(e: Event) {
     this.clearSquare();
     if (!e.target || !(e.target instanceof HTMLImageElement)) return;
     const currentX = Number(e.target.dataset.x);
@@ -447,13 +531,16 @@ class GameBoard {
     }
   }
 
-  private newMove(e: Event) {
+  private movePiece(e: Event) {
+    this.dragLeave(e);
     if (
-      e.target instanceof HTMLImageElement ||
+      !(
+        e.target instanceof HTMLDivElement ||
+        e.target instanceof HTMLImageElement
+      ) ||
       !this.selectedPiece ||
       !this.selectedElement ||
       !e.target ||
-      !(e.target instanceof HTMLDivElement) ||
       !(
         (this.whitePlayersTurn && this.selectedPiece.getIsWhite()) ||
         (!this.whitePlayersTurn && !this.selectedPiece.getIsWhite())
@@ -466,6 +553,7 @@ class GameBoard {
     const newPositionY = Number(e.target.dataset.y);
     const oldPositionX = this.selectedPiece.getX();
     const oldPositionY = this.selectedPiece.getY();
+    if (newPositionX === oldPositionX && newPositionY === oldPositionY) return;
     const newBoardElement = document.querySelector(
       `[data-x="${newPositionX}"][data-y="${newPositionY}"]`
     ) as HTMLDivElement;
@@ -497,7 +585,10 @@ class GameBoard {
       ];
       newBoardElement.insertAdjacentElement("beforeend", this.selectedElement!);
       if (this.selectedPiece instanceof Pawn) {
-        (this.selectedPiece as Pawn).setHadFirstMove();
+        this.selectedPiece.setHadFirstMove();
+        if (this.selectedPiece.isPromotable()) {
+          this.openModal(newPositionX, newPositionY);
+        }
       }
       if (this.selectedPiece instanceof King) {
         this.updateKingPosition(this.selectedPiece);
@@ -505,162 +596,42 @@ class GameBoard {
       this.updateAvailableMoves();
       this.whitePlayersTurn = !this.whitePlayersTurn;
       this.updateState();
-      this.selectedElement = undefined;
-      this.selectedPiece = undefined;
-    }
-    this.clearSquare();
-  }
-  private movePiece(e: Event) {
-    if (
-      e.target instanceof HTMLImageElement ||
-      typeof this.selectedPiece === "undefined" ||
-      !this.selectedPiece ||
-      typeof this.selectedElement === "undefined" ||
-      !this.selectedElement ||
-      !e.target ||
-      typeof e.target === "undefined" ||
-      !(e.target instanceof HTMLDivElement)
-    ) {
-      return;
-    }
-    this.clearSquare();
-
-    const newPositionX = Number(e.target.dataset.x);
-    const newPositionY = Number(e.target.dataset.y);
-    const oldPositionX = Number(this.selectedElement.dataset.x);
-    const oldPositionY = Number(this.selectedElement.dataset.y);
-
-    const newBoardElement = document.querySelector(
-      `[data-x="${newPositionX}"][data-y="${newPositionY}"]`
-    ) as HTMLDivElement;
-    const availabeMoves = this.totalPieces
-      .get(this.selectedPiece.getCoords())!
-      .getAvailableMoves();
-    if (typeof availabeMoves === "undefined") return;
-    for (const moves of availabeMoves) {
-      if (moves[0] === newPositionX && moves[1] === newPositionY) {
-        if (
-          this.whitePlayer.getIsChecked() ||
-          this.blackPlayer.getIsChecked()
-        ) {
-          this.whitePlayer.setIsChecked(false);
-          this.blackPlayer.setIsChecked(false);
-        }
-        const newBoardPosition = this.board[newPositionX][newPositionY];
-
-        this.board[newPositionX][newPositionY] = this.selectedPiece;
-        this.board[oldPositionX][oldPositionY] = 0;
-        this.selectedPiece.setX(newPositionX);
-        this.selectedPiece.setY(newPositionY);
-        this.updatePiece(this.selectedPiece);
-        this.selectedPiece.setCoords(getCoords(newPositionX, newPositionY));
-        if (typeof newBoardPosition === "number") {
-          this.isChecked() ? this.checkedAudio.play() : this.placeAudio.play();
-        } else {
-          const enemyElement = document.querySelector(
-            `.chess-piece[data-x="${newPositionX}"][data-y="${newPositionY}"]`
-          ) as HTMLImageElement;
-          this.removePiece(newBoardPosition);
-          enemyElement.remove();
-          this.isChecked()
-            ? this.checkedAudio.play()
-            : this.captureAudio.play();
-        }
-        [this.selectedElement.dataset.x, this.selectedElement.dataset.y] = [
-          String(newPositionX),
-          String(newPositionY),
-        ];
-        newBoardElement.insertAdjacentElement(
-          "beforeend",
-          this.selectedElement!
-        );
-        if (this.selectedPiece instanceof Pawn) {
-          (this.selectedPiece as Pawn).setHadFirstMove();
-        }
-        if (this.selectedPiece instanceof King) {
-          this.updateKingPosition(this.selectedPiece);
-        }
-        this.updateAvailableMoves();
-        this.whitePlayersTurn = !this.whitePlayersTurn;
-        this.updateState();
-      }
+      this.clearSquare();
+      this.unselectPiece();
+      this.highlightLastMove(oldPositionX, oldPositionY);
     }
   }
-  private dropPiece(e: Event): void {
-    this.clearSquare();
-    this.dragLeave(e);
-    if (
-      !e.target ||
-      !(
-        e.target instanceof HTMLDivElement ||
-        e.target instanceof HTMLImageElement
-      ) ||
-      !this.draggedElement ||
-      !this.beingDragged ||
-      !(
-        (this.whitePlayersTurn && this.draggedElement.getIsWhite()) ||
-        (!this.whitePlayersTurn && !this.draggedElement.getIsWhite())
-      )
-    ) {
-      return;
-    }
-    const newPositionX = Number(e.target.dataset.x);
-    const newPositionY = Number(e.target.dataset.y);
-    const oldPositionX = Number(this.beingDragged.dataset.x);
-    const oldPositionY = Number(this.beingDragged.dataset.y);
+  private closeModal(): void {
+    document
+      .querySelectorAll(".modal-image")
+      .forEach((modalImage) =>
+        modalImage.removeEventListener("click", this.promotePawn.bind, true)
+      );
+    (document.querySelector(".modal") as HTMLDivElement).classList.remove(
+      "visible-modal"
+    );
+  }
+  private openModal(modalPosX: number, modalPosY: number): void {
+    const isWhite = (this.board[modalPosX][modalPosY] as Piece).getIsWhite();
 
-    const newBoardElement = document.querySelector(
-      `[data-x="${newPositionX}"][data-y="${newPositionY}"]`
+    isWhite ? ".modal--white" : ".modal--white";
+    const modal = document.querySelector(
+      `${isWhite ? ".modal--white" : ".modal--black"}`
     ) as HTMLDivElement;
-    const availabeMoves = this.totalPieces
-      .get(this.draggedElement.getCoords())!
-      .getAvailableMoves();
-    if (typeof availabeMoves === "undefined") return;
-    for (const moves of availabeMoves) {
-      if (moves[0] === newPositionX && moves[1] === newPositionY) {
-        if (
-          this.whitePlayer.getIsChecked() ||
-          this.blackPlayer.getIsChecked()
-        ) {
-          this.whitePlayer.setIsChecked(false);
-          this.blackPlayer.setIsChecked(false);
-        }
-        const newBoardPosition = this.board[newPositionX][newPositionY];
 
-        this.board[newPositionX][newPositionY] = this.draggedElement;
-        this.board[oldPositionX][oldPositionY] = 0;
-        this.draggedElement.setX(newPositionX);
-        this.draggedElement.setY(newPositionY);
-        this.updatePiece(this.draggedElement);
-        this.draggedElement.setCoords(getCoords(newPositionX, newPositionY));
-        if (typeof newBoardPosition === "number") {
-          this.isChecked() ? this.checkedAudio.play() : this.placeAudio.play();
-        } else {
-          const enemyElement = document.querySelector(
-            `.chess-piece[data-x="${newPositionX}"][data-y="${newPositionY}"]`
-          ) as HTMLImageElement;
-          this.removePiece(newBoardPosition);
-          enemyElement.remove();
-          this.isChecked()
-            ? this.checkedAudio.play()
-            : this.captureAudio.play();
-        }
-        [this.beingDragged.dataset.x, this.beingDragged.dataset.y] = [
-          String(newPositionX),
-          String(newPositionY),
-        ];
-        newBoardElement.insertAdjacentElement("beforeend", this.beingDragged!);
-        if (this.draggedElement instanceof Pawn) {
-          (this.draggedElement as Pawn).setHadFirstMove();
-        }
-        if (this.draggedElement instanceof King) {
-          this.updateKingPosition(this.draggedElement);
-        }
-        this.updateAvailableMoves();
-        this.whitePlayersTurn = !this.whitePlayersTurn;
-        this.updateState();
-      }
-    }
+    modal.style.left = `${modalPosY}00px`;
+    modal.classList.add("visible-modal");
+    document
+      .querySelectorAll(".modal-image")
+      .forEach((modalImage) =>
+        modalImage.addEventListener("click", (e) =>
+          this.promotePawn(e, modalPosX, modalPosY)
+        )
+      );
+  }
+  private unselectPiece(): void {
+    this.selectedElement = undefined;
+    this.selectedPiece = undefined;
   }
   private updateKingPosition(piece: Piece) {
     piece.getIsWhite()
@@ -692,6 +663,7 @@ class GameBoard {
     }
     return false;
   }
+
   // private updatePieceMoves(piece: Piece): void {
   //   piece.isWhite
   //     ? this.whitePlayer.updatePiece(piece)
@@ -790,34 +762,6 @@ class GameBoard {
         ? this.whitePlayer.addPiece(piece)
         : this.blackPlayer.addPiece(piece);
     });
-    // this.totalPieces.forEach((piece) => {
-    //   if (piece instanceof Pawn) {
-    //     const availableMoves = piece.getValidMoves(this.board);
-    //     const availableAttackMoves = piece.getValidAttackMoves(this.board);
-    //     piece.setAvailableMoves(availableMoves);
-    //     piece.setAvailableAttackMoves(availableAttackMoves);
-    //     piece.concatMoves();
-    //   } else if (
-    //     piece instanceof incrementalPiece ||
-    //     piece instanceof positionalPiece
-    //   ) {
-    //     let availableMoves = piece.getValidMoves(this.board);
-
-    //     //  Might not need this
-    // if (piece instanceof King) {
-    //   const playersMap = piece.getIsWhite()
-    //     ? this.whitePlayer.getOpponentHeatMap()
-    //     : this.blackPlayer.getOpponentHeatMap();
-    //   availableMoves = availableMoves.filter(
-    //     (move) => playersMap[move[0]][move[1]] === 0
-    //   );
-    // }
-    //     piece.setAvailableMoves(availableMoves);
-    //   }
-    //   piece.getIsWhite()
-    //     ? this.whitePlayer.addPiece(piece)
-    //     : this.blackPlayer.addPiece(piece);
-    // });
     this.whitePlayer.updateMoves();
     this.blackPlayer.updateMoves();
     this.makeMoves();
@@ -836,11 +780,14 @@ class GameBoard {
   }
   private clearSquare() {
     document
-      .querySelectorAll(`[data-hint="true"], .chess-piece, .square`)
+      .querySelectorAll(
+        `.hint--large, .hint--small, .highlight-box, .highlight-border, [data-is-moveable-to="true"]`
+      )
       .forEach((s) => {
         s.classList.remove("hint--large");
         s.classList.remove("hint--small");
         s.classList.remove("highlight-box");
+        s.classList.remove("highlight-border");
         if (s.classList.contains("square")) {
           (s as HTMLDivElement).dataset.isMoveableTo = "false";
         }
@@ -850,68 +797,180 @@ class GameBoard {
     if (!e.target || !(e.target instanceof HTMLImageElement)) return;
     const currentX = Number(e.target.dataset.x);
     const currentY = Number(e.target.dataset.y);
-    this.showMoves(e);
-    this.beingDragged = e.target;
-    this.draggedElement = this.board[currentX][currentY] as Piece;
+    this.showAvailableMoves(e);
     this.selectedPiece = this.board[currentX][currentY] as Piece;
     this.selectedElement = document.querySelector(
       `.chess-piece[data-x="${currentX}"][data-y="${currentY}"]`
     ) as HTMLImageElement;
   }
-  private updateState() {
-    const newState = this.duplicateBoard();
-    this.prevStack.push(newState);
+
+  public print(e: any) {
+    e.stopPropagation();
+    e.preventDefault();
+    console.log(e.clientX, e.clientY);
   }
-  public previousState() {
-    console.log(this.prevStack.length);
-    if (!Array.isArray(this.prevStack) || !this.prevStack.length) {
-      if (this.prevStack.length > 0) {
-        console.log(this.prevStack);
-        const prevBoard = this.prevStack.pop()!;
-        this.nextStack.push(prevBoard);
-        console.log(prevBoard);
+  private updateState() {
+    document.removeEventListener("mouseover", this.print.bind(this), true);
+
+    const newState = this.duplicateBoard();
+    this.prevStateStack.push(newState);
+  }
+  private previousState() {
+    if (
+      !Array.isArray(this.prevStateStack) ||
+      !this.prevStateStack.length ||
+      this.prevStateStack.length >= 0
+    ) {
+      const prevBoard = this.prevStateStack.pop();
+      if (typeof prevBoard !== "undefined") {
+        const dupeBoard = prevBoard.map((row) => [...row]);
+        this.nextStateStack.push(dupeBoard);
+        this.updateSavedState("prev");
       }
     }
   }
-  public nextState() {
-    // if (!Array.isArray(this.nextStack) || !this.nextStack.length) {
-    // console.log(this.nextStack);
-    // const nextBoard = this.nextStack.pop() as (number | Piece)[][];
-    // this.prevStack.push(nextBoard);
-    // console.log(nextBoard);
-    // }
+  private nextState() {
+    if (
+      !Array.isArray(this.nextStateStack) ||
+      !this.nextStateStack.length ||
+      this.nextStateStack.length >= 0
+    ) {
+      const nextBoard = this.nextStateStack.pop();
+      if (typeof nextBoard !== "undefined") {
+        const dupeBoard = nextBoard.map((row) => [...row]);
+        this.prevStateStack.push(dupeBoard);
+        this.updateSavedState("next");
+      }
+    }
   }
-  private duplicateBoard(): (number | Piece)[][] {
-    const duplicateBoard = this.board.map((row) => [...row]);
-    return duplicateBoard;
+  private updateSavedState(direction: string) {
+    const savedState =
+      direction === "prev"
+        ? [...this.prevStateStack[this.prevStateStack.length - 1]]
+        : [...this.nextStateStack[this.nextStateStack.length - 1]];
+
+    console.log(savedState);
+    for (let x = 0; x < this.BOARD_COLS; x++) {
+      for (let y = 0; y < this.BOARD_ROWS; y++) {
+        const currentElement = this.board[x][y];
+        const savedStateElement = savedState[x][y];
+        if (currentElement === savedStateElement) continue;
+
+        const square = document.querySelector(
+          `.square[data-x="${x}"][data-y="${y}"]`
+        ) as HTMLDivElement;
+        if (!!square.children.namedItem("chess-piece")) {
+          (
+            document.querySelector(
+              `.chess-piece[data-x="${x}"][data-y="${y}"]`
+            ) as HTMLImageElement
+          ).remove();
+        }
+        if (savedStateElement instanceof Piece) {
+          const pieceElement = document.createElement("img");
+          pieceElement.dataset.x = String(x);
+          pieceElement.dataset.y = String(y);
+          pieceElement.setAttribute("name", "chess-piece");
+          this.board[x][y] = savedState[x][y];
+          pieceElement.src = (savedState[x][y] as Piece).getImage();
+          pieceElement.classList.add("chess-piece");
+          pieceElement.draggable = true;
+          square.insertAdjacentElement("beforeend", pieceElement);
+        }
+      }
+    }
   }
 
-  public createGame() {
-    const gameBoard = document.querySelector(".gameBoard") as HTMLDivElement;
-    this.createBoard(gameBoard);
+  // const square = document.querySelector(
+  //   `.square[data-x="${x}"][data-y="${y}"]`
+  // ) as HTMLDivElement;
+  // if (!!square.children.namedItem("chess-piece")) {
+  //   (
+  //     document.querySelector(
+  //       `.chess-piece[data-x="${x}"][data-y="${y}"]`
+  //     ) as HTMLImageElement
+  //   ).remove();
+  // }
+  // if (savedStateElement instanceof Piece) {
+  // const pieceElement = document.createElement("img");
+  // pieceElement.dataset.x = String(x);
+  // pieceElement.dataset.y = String(y);
+  // pieceElement.setAttribute("name", "chess-piece");
+  // this.board[x][y] = savedState[x][y];
+  // pieceElement.src = (savedState[x][y] as Piece).getImage();
+  // pieceElement.classList.add("chess-piece");
+  // pieceElement.draggable = true;
+  // square.insertAdjacentElement("beforeend", pieceElement);
+  // }
+  private duplicateBoard(): (number | Piece)[][] {
+    const duplicatedBoard = this.board.map((row) => [...row]);
+    return duplicatedBoard;
+  }
+  private createEmptyBoard(): (number | Piece)[][] {
+    const emptyBoard = new Array(this.BOARD_COLS);
+    for (let i = 0; i < this.BOARD_ROWS; i++) {
+      emptyBoard[i] = new Array(this.BOARD_ROWS).fill(0);
+    }
+    return emptyBoard;
+  }
+  private rotate() {
+    this.isBoardRotated = !this.isBoardRotated;
+    document.querySelector(".gameBoard")!.classList.toggle("rotate");
+    document
+      .querySelectorAll(".chess-piece")
+      .forEach((piece) => piece.classList.toggle("rotate"));
+  }
+  private restartGame() {
+    if (this.isBoardRotated) this.rotate();
+    this.initializeVariables();
+    document
+      .querySelectorAll(".chess-piece")
+      .forEach((piece) => piece.remove());
+    // this.createGame();
     this.createPieces();
+    this.addHandlers();
+  }
+  private addHandlers(): void {
     document.querySelectorAll(".chess-piece").forEach((piece) => {
-      // piece.addEventListener("click", this.showMoves.bind(this));
       piece.addEventListener("click", this.selectPiece.bind(this));
       piece.addEventListener("dragstart", this.dragStart.bind(this));
     });
     document.querySelectorAll(".square").forEach((square) => {
       square.addEventListener("click", this.movePiece.bind(this));
       square.addEventListener("dragover", this.dragOver.bind(this));
-      square.addEventListener("drop", this.dropPiece.bind(this));
+      square.addEventListener("drop", this.movePiece.bind(this));
       square.addEventListener("dragleave", this.dragLeave.bind(this));
       square.addEventListener("dragenter", this.dragEnter.bind(this));
     });
+    document
+      .querySelector(".rot")!
+      .addEventListener("click", this.rotate.bind(this));
+    document
+      .querySelector(".restart")!
+      .addEventListener("click", this.restartGame.bind(this));
+    document
+      .querySelector(".prev")!
+      .addEventListener("click", this.previousState.bind(this));
+    document
+      .querySelector(".next")!
+      .addEventListener("click", this.nextState.bind(this));
+  }
+  private createGame() {
+    const gameBoard = document.querySelector(".gameBoard") as HTMLDivElement;
+    this.createBoard(gameBoard);
+    this.createPieces();
+    this.addHandlers();
   }
 }
 
 (function () {
   const board: GameBoard = new GameBoard();
+  // new GameBoard();
   // const gameBoard = document.querySelector(".gameBoard") as HTMLDivElement;
   // board.createBoard(gameBoard);
   // board.createPieces();
   // document.querySelectorAll(".chess-piece").forEach((piece) => {
-  //   piece.addEventListener("click", (e) => board.showMoves(e));
+  //   piece.addEventListener("click", (e) => board.showAvailableMoves(e));
   //   piece.addEventListener("dragstart", (e) => board.dragStart(e));
   // });
   // document.querySelectorAll(".square").forEach((square) => {
@@ -921,19 +980,89 @@ class GameBoard {
   //   square.addEventListener("dragleave", (e) => board.dragLeave(e));
   //   square.addEventListener("dragenter", (e) => board.dragEnter(e));
   // });
-  const next = document
-    .querySelector(".next")!
-    .addEventListener("click", board.nextState);
-  const prev = document
-    .querySelector(".prev")!
-    .addEventListener("click", board.previousState);
 })();
 
 function isLowerCase(charCode: number) {
   return charCode >= 97 && charCode <= 122;
 }
 
-// daragDrop(e: Event) {
+// private movePiece(e: Event) {
+//   if (
+//     e.target instanceof HTMLImageElement ||
+//     typeof this.selectedPiece === "undefined" ||
+//     !this.selectedPiece ||
+//     typeof this.selectedElement === "undefined" ||
+//     !this.selectedElement ||
+//     !e.target ||
+//     typeof e.target === "undefined" ||
+//     !(e.target instanceof HTMLDivElement)
+//   ) {
+//     return;
+//   }
+//   this.clearSquare();
+
+//   const newPositionX = Number(e.target.dataset.x);
+//   const newPositionY = Number(e.target.dataset.y);
+//   const oldPositionX = Number(this.selectedElement.dataset.x);
+//   const oldPositionY = Number(this.selectedElement.dataset.y);
+
+//   const newBoardElement = document.querySelector(
+//     `[data-x="${newPositionX}"][data-y="${newPositionY}"]`
+//   ) as HTMLDivElement;
+//   const availabeMoves = this.totalPieces
+//     .get(this.selectedPiece.getCoords())!
+//     .getAvailableMoves();
+//   if (typeof availabeMoves === "undefined") return;
+//   for (const moves of availabeMoves) {
+//     if (moves[0] === newPositionX && moves[1] === newPositionY) {
+//       if (
+//         this.whitePlayer.getIsChecked() ||
+//         this.blackPlayer.getIsChecked()
+//       ) {
+//         this.whitePlayer.setIsChecked(false);
+//         this.blackPlayer.setIsChecked(false);
+//       }
+//       const newBoardPosition = this.board[newPositionX][newPositionY];
+
+//       this.board[newPositionX][newPositionY] = this.selectedPiece;
+//       this.board[oldPositionX][oldPositionY] = 0;
+//       this.selectedPiece.setX(newPositionX);
+//       this.selectedPiece.setY(newPositionY);
+//       this.updatePiece(this.selectedPiece);
+//       this.selectedPiece.setCoords(getCoords(newPositionX, newPositionY));
+//       if (typeof newBoardPosition === "number") {
+//         this.isChecked() ? this.checkedAudio.play() : this.placeAudio.play();
+//       } else {
+//         const enemyElement = document.querySelector(
+//           `.chess-piece[data-x="${newPositionX}"][data-y="${newPositionY}"]`
+//         ) as HTMLImageElement;
+//         this.removePiece(newBoardPosition);
+//         enemyElement.remove();
+//         this.isChecked()
+//           ? this.checkedAudio.play()
+//           : this.captureAudio.play();
+//       }
+//       [this.selectedElement.dataset.x, this.selectedElement.dataset.y] = [
+//         String(newPositionX),
+//         String(newPositionY),
+//       ];
+//       newBoardElement.insertAdjacentElement(
+//         "beforeend",
+//         this.selectedElement!
+//       );
+//       if (this.selectedPiece instanceof Pawn) {
+//         (this.selectedPiece as Pawn).setHadFirstMove();
+//       }
+//       if (this.selectedPiece instanceof King) {
+//         this.updateKingPosition(this.selectedPiece);
+//       }
+//       this.updateAvailableMoves();
+//       this.whitePlayersTurn = !this.whitePlayersTurn;
+//       this.updateState();
+//     }
+//   }
+// }
+// private dropPiece(e: Event): void {
 //   this.clearSquare();
 //   this.dragLeave(e);
 //   if (
@@ -942,93 +1071,70 @@ function isLowerCase(charCode: number) {
 //       e.target instanceof HTMLDivElement ||
 //       e.target instanceof HTMLImageElement
 //     ) ||
-//     !this.beingDragged ||
 //     !this.draggedElement ||
-// !(
-//   (this.whitePlayersTurn && this.draggedElement.getIsWhite()) ||
-//   (!this.whitePlayersTurn && !this.draggedElement.getIsWhite())
-// )
+//     !this.beingDragged ||
+//     !(
+//       (this.whitePlayersTurn && this.draggedElement.getIsWhite()) ||
+//       (!this.whitePlayersTurn && !this.draggedElement.getIsWhite())
+//     )
 //   ) {
 //     return;
 //   }
-
 //   const newPositionX = Number(e.target.dataset.x);
 //   const newPositionY = Number(e.target.dataset.y);
-//   const oldPositionX = Number(this.beingDragged!.dataset.x);
-//   const oldPositionY = Number(this.beingDragged!.dataset.y);
-//   let legalMoves = this.getLegalMoves(this.draggedElement);
+//   const oldPositionX = Number(this.beingDragged.dataset.x);
+//   const oldPositionY = Number(this.beingDragged.dataset.y);
 
-//   let newPosition = document.querySelector(
+//   const newBoardElement = document.querySelector(
 //     `[data-x="${newPositionX}"][data-y="${newPositionY}"]`
 //   ) as HTMLDivElement;
+//   const availabeMoves = this.totalPieces
+//     .get(this.draggedElement.getCoords())!
+//     .getAvailableMoves();
+//   if (typeof availabeMoves === "undefined") return;
+//   for (const moves of availabeMoves) {
+//     if (moves[0] === newPositionX && moves[1] === newPositionY) {
+//       if (
+//         this.whitePlayer.getIsChecked() ||
+//         this.blackPlayer.getIsChecked()
+//       ) {
+//         this.whitePlayer.setIsChecked(false);
+//         this.blackPlayer.setIsChecked(false);
+//       }
+//       const newBoardPosition = this.board[newPositionX][newPositionY];
 
-//   for (let i = 0; i < legalMoves.length; i++) {
-//     let tempBoard = new Array(this.BOARD_COLS);
-//     for (let j = 0; j < this.BOARD_COLS; j++)
-//       tempBoard[j] = this.board[j].slice();
-//     tempBoard[legalMoves[i][0]][legalMoves[i][1]] = this.draggedElement;
-//     tempBoard[oldPositionX][oldPositionY] = 0;
-//     const availableMoves =
-//       this.draggedElement.getID() === "king" &&
-//       (this.isWhiteInCheck || this.isBlackInCheck)
-//         ? !this.generateCheckedMoves(tempBoard, this.whitePlayersTurn)
-//         : this.generateCheckedMoves(tempBoard, this.whitePlayersTurn);
-//     if (
-//       legalMoves[i][0] === newPositionX &&
-//       legalMoves[i][1] === newPositionY &&
-//       availableMoves
-//     ) {
-// this.isBlackInCheck = this.isWhiteInCheck = false;
-// this.whitePlayersTurn = !this.whitePlayersTurn;
-//       const temp = this.board[newPositionX][newPositionY];
-//       this.beingDragged.dataset.x = String(newPositionX);
-//       this.beingDragged.dataset.y = String(newPositionY);
-//       this.draggedElement.setX(newPositionX);
-//       this.draggedElement.setY(newPositionY);
 //       this.board[newPositionX][newPositionY] = this.draggedElement;
 //       this.board[oldPositionX][oldPositionY] = 0;
-//       const newCoords = getCoords(newPositionX, newPositionY);
-//       this.draggedElement.setCoords(newCoords);
-//       if (this.draggedElement.getID() === "king") {
-//         this.whitePlayersTurn
-//           ? (this.blackKingPosition = [newPositionX, newPositionY])
-//           : (this.whiteKingPosition = [newPositionX, newPositionY]);
-//       }
-//       if (typeof temp !== "number") {
-//         newPosition.lastChild?.remove();
+//       this.draggedElement.setX(newPositionX);
+//       this.draggedElement.setY(newPositionY);
+//       this.updatePiece(this.draggedElement);
+//       this.draggedElement.setCoords(getCoords(newPositionX, newPositionY));
+//       if (typeof newBoardPosition === "number") {
+//         this.isChecked() ? this.checkedAudio.play() : this.placeAudio.play();
+//       } else {
+//         const enemyElement = document.querySelector(
+//           `.chess-piece[data-x="${newPositionX}"][data-y="${newPositionY}"]`
+//         ) as HTMLImageElement;
+//         this.removePiece(newBoardPosition);
+//         enemyElement.remove();
 //         this.isChecked()
 //           ? this.checkedAudio.play()
 //           : this.captureAudio.play();
-//       } else if (newPosition.childElementCount === 1) {
-//         this.isChecked() ? this.checkedAudio.play() : this.placeAudio.play();
 //       }
-//       newPosition.insertAdjacentElement("beforeend", this.beingDragged!);
-//       document
-//         .querySelectorAll(".square")
-//         .forEach((s) => s.classList.remove("availableMoves"));
-//       if (this.draggedElement.getID() === "pawn") {
+//       [this.beingDragged.dataset.x, this.beingDragged.dataset.y] = [
+//         String(newPositionX),
+//         String(newPositionY),
+//       ];
+//       newBoardElement.insertAdjacentElement("beforeend", this.beingDragged!);
+//       if (this.draggedElement instanceof Pawn) {
 //         (this.draggedElement as Pawn).setHadFirstMove();
 //       }
+//       if (this.draggedElement instanceof King) {
+//         this.updateKingPosition(this.draggedElement);
+//       }
 //       this.updateAvailableMoves();
+//       this.whitePlayersTurn = !this.whitePlayersTurn;
 //       this.updateState();
-//       this.updatePiece(this.draggedElement);
-//       // this.generateHeatMaps();
 //     }
 //   }
-// }
-// private isChecked(): boolean {
-//   this.getPieces().forEach((piece) => {
-//     for (const move of this.getLegalMoves(piece)) {
-//       const newSquare = this.board[move[0]][move[1]];
-//       if (typeof newSquare === "number") continue;
-//       console.log(newSquare);
-//       if (!piece.isSameColor(newSquare) && newSquare.getID() === "king") {
-//         this.whitePlayersTurn
-//           ? this.whitePlayer.setIsChecked()
-//           : this.blackPlayer.setIsChecked();
-//         return true;
-//       }
-//     }
-//   });
-//   return false;
 // }
