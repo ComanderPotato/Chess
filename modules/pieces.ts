@@ -1,3 +1,4 @@
+import Player from "./Player.js";
 type id = "king" | "rook" | "pawn" | "queen" | "knight" | "bishop";
 type Type = "incremental" | "positional";
 export class Piece {
@@ -41,6 +42,11 @@ export class Piece {
   }
   public setAvailableMoves(updatedMoves: [number, number][]): void {
     this.availableMoves = updatedMoves;
+  }
+  public appendAvailableMoves(newMoves: [number, number][]): void {
+    for (const move of newMoves) {
+      this.availableMoves.push(move);
+    }
   }
   public getX(): number {
     return this.x;
@@ -330,6 +336,21 @@ export class King extends positionalPiece {
   public setHadFirstMove(): void {
     // If had first move king cant castle
     this.hadFirstMove = true;
+  }
+  public canCastle(board: (Piece | number)[][], player: Player): void {
+    if (!this.getHadFirstMove()) {
+      const availableRooks: Rook[] = [];
+      for (const piece of player.getAvailablePieces().values()) {
+        if (piece instanceof Rook && !piece.getHadFirstMove())
+          availableRooks.push(piece);
+        else continue;
+      }
+      for (const rook of availableRooks) {
+        if (!rook.getHadFirstMove()) {
+          console.log(rook);
+        }
+      }
+    }
   }
 }
 export class Rook extends incrementalPiece {

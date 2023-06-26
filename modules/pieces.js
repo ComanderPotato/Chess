@@ -22,6 +22,11 @@ export class Piece {
     setAvailableMoves(updatedMoves) {
         this.availableMoves = updatedMoves;
     }
+    appendAvailableMoves(newMoves) {
+        for (const move of newMoves) {
+            this.availableMoves.push(move);
+        }
+    }
     getX() {
         return this.x;
     }
@@ -274,6 +279,22 @@ export class King extends positionalPiece {
     setHadFirstMove() {
         // If had first move king cant castle
         this.hadFirstMove = true;
+    }
+    canCastle(board, player) {
+        if (!this.getHadFirstMove()) {
+            const availableRooks = [];
+            for (const piece of player.getAvailablePieces().values()) {
+                if (piece instanceof Rook && !piece.getHadFirstMove())
+                    availableRooks.push(piece);
+                else
+                    continue;
+            }
+            for (const rook of availableRooks) {
+                if (!rook.getHadFirstMove()) {
+                    console.log(rook);
+                }
+            }
+        }
     }
 }
 export class Rook extends incrementalPiece {

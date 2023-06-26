@@ -56,4 +56,8 @@ export default class Player {
     setOpponentHeatMap(updatedHeatMap) {
         this.opponentHeatMap = updatedHeatMap;
     }
+    canCastle(board) {
+        const king = this.getAvailablePieces().get(getCoords(this.kingsPositions[0], this.kingsPositions[1]));
+        king.canCastle(board, this);
+    }
 }

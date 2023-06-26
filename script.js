@@ -491,8 +491,12 @@ class GameBoard {
                     this.openModal(newPositionX, newPositionY);
                 }
             }
-            if (this.selectedPiece instanceof King) {
+            else if (this.selectedPiece instanceof King) {
                 this.updateKingPosition(this.selectedPiece);
+            }
+            if (this.selectedPiece instanceof Rook ||
+                this.selectedPiece instanceof King) {
+                this.selectedPiece.setHadFirstMove();
             }
             this.updateAvailableMoves();
             this.whitePlayersTurn = !this.whitePlayersTurn;
@@ -639,11 +643,13 @@ class GameBoard {
                 ? this.whitePlayer.addPiece(piece)
                 : this.blackPlayer.addPiece(piece);
         });
-        this.whitePlayer.updateMoves();
-        this.blackPlayer.updateMoves();
+        // this.whitePlayer.updateMoves();
+        // this.blackPlayer.updateMoves();
         this.makeMoves();
         this.whitePlayer.updateMoves();
         this.blackPlayer.updateMoves();
+        this.whitePlayer.canCastle(this.board);
+        this.blackPlayer.canCastle(this.board);
         this.checkVictory();
     }
     dragEnter(e) {

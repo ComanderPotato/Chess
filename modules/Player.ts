@@ -1,4 +1,4 @@
-import { Piece, incrementalPiece, positionalPiece } from "./pieces";
+import { Piece, King } from "./pieces";
 import getCoords from "./Utils/Coordinates.js";
 export default class Player {
   private isWhite: boolean;
@@ -64,5 +64,11 @@ export default class Player {
   }
   public setOpponentHeatMap(updatedHeatMap: number[][]): void {
     this.opponentHeatMap = updatedHeatMap;
+  }
+  public canCastle(board: (number | Piece)[][]): void {
+    const king = this.getAvailablePieces().get(
+      getCoords(this.kingsPositions[0], this.kingsPositions[1])
+    ) as King;
+    king.canCastle(board, this);
   }
 }
