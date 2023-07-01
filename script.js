@@ -23,7 +23,6 @@ class GameBoard {
         this.totalPieces = new Map();
     }
     createBoard(htmlElement) {
-        console.log(htmlElement);
         for (let i = 0; i < this.BOARD_COLS; i++) {
             const row = document.createElement("div");
             row.classList.add("row");
@@ -159,7 +158,6 @@ class GameBoard {
         pawnElement.remove();
         this.removePiece(pawnToPromote);
         document.querySelector(`.square[data-x="${pawnX}"][data-y="${pawnY}"]`).insertAdjacentElement("beforeend", pieceElement);
-        console.log(piece);
         this.addPiece(piece);
         pieceElement.addEventListener("click", this.selectPiece.bind(this));
         pieceElement.addEventListener("dragstart", this.dragStart.bind(this));
@@ -402,11 +400,13 @@ class GameBoard {
         const currentX = Number(e.target.dataset.x);
         const currentY = Number(e.target.dataset.y);
         const newPiece = this.board[currentX][currentY];
-        if (this.selectedPiece instanceof Piece &&
+        console.log(this.board);
+        if ((this.selectedPiece instanceof Piece &&
             newPiece instanceof Piece &&
             this.selectedPiece.getIsWhite() !== newPiece.getIsWhite() &&
             ((this.whitePlayersTurn && !newPiece.getIsWhite()) ||
-                (!this.whitePlayersTurn && newPiece.getIsWhite()))) {
+                (!this.whitePlayersTurn && newPiece.getIsWhite()))) ||
+            (this.selectedPiece instanceof King && newPiece instanceof Rook)) {
             this.movePiece(e);
         }
         else {
@@ -458,52 +458,96 @@ class GameBoard {
         const newPositionY = Number(e.target.dataset.y);
         const oldPositionX = this.selectedPiece.getX();
         const oldPositionY = this.selectedPiece.getY();
-        if (newPositionX === oldPositionX && newPositionY === oldPositionY)
-            return;
-        const newBoardElement = document.querySelector(`[data-x="${newPositionX}"][data-y="${newPositionY}"]`);
-        if (JSON.parse(newBoardElement.dataset.isMoveableTo)) {
-            this.whitePlayer.setIsChecked(false);
-            this.blackPlayer.setIsChecked(false);
-            const newBoardPosition = this.board[newPositionX][newPositionY];
-            this.board[newPositionX][newPositionY] = this.selectedPiece;
-            this.board[oldPositionX][oldPositionY] = 0;
-            this.selectedPiece.setX(newPositionX);
-            this.selectedPiece.setY(newPositionY);
-            this.updatePiece(this.selectedPiece);
-            this.selectedPiece.setCoords(getCoords(newPositionX, newPositionY));
-            if (typeof newBoardPosition === "number") {
-                this.isChecked() ? this.checkedAudio.play() : this.placeAudio.play();
-            }
-            else {
-                const enemyElement = document.querySelector(`.chess-piece[data-x="${newPositionX}"][data-y="${newPositionY}"]`);
-                this.removePiece(newBoardPosition);
-                enemyElement.remove();
-                this.isChecked() ? this.checkedAudio.play() : this.captureAudio.play();
-            }
-            [this.selectedElement.dataset.x, this.selectedElement.dataset.y] = [
-                String(newPositionX),
-                String(newPositionY),
-            ];
-            newBoardElement.insertAdjacentElement("beforeend", this.selectedElement);
-            if (this.selectedPiece instanceof Pawn) {
-                this.selectedPiece.setHadFirstMove();
-                if (this.selectedPiece.isPromotable()) {
-                    this.openModal(newPositionX, newPositionY);
+        if (this.selectedPiece instanceof King &&
+            this.board[newPositionX][newPositionY] instanceof Rook) {
+            this.castleKing(this.board[newPositionX][newPositionY]);
+        }
+        else {
+            if (newPositionX === oldPositionX && newPositionY === oldPositionY)
+                return;
+            const newBoardElement = document.querySelector(`[data-x="${newPositionX}"][data-y="${newPositionY}"]`);
+            if (JSON.parse(newBoardElement.dataset.isMoveableTo)) {
+                this.whitePlayer.setIsChecked(false);
+                this.blackPlayer.setIsChecked(false);
+                const newBoardPosition = this.board[newPositionX][newPositionY];
+                this.board[newPositionX][newPositionY] = this.selectedPiece;
+                this.board[oldPositionX][oldPositionY] = 0;
+                this.selectedPiece.setX(newPositionX);
+                this.selectedPiece.setY(newPositionY);
+                this.updatePiece(this.selectedPiece);
+                this.selectedPiece.setCoords(getCoords(newPositionX, newPositionY));
+                if (typeof newBoardPosition === "number") {
+                    this.isChecked() ? this.checkedAudio.play() : this.placeAudio.play();
+                }
+                else {
+                    const enemyElement = document.querySelector(`.chess-piece[data-x="${newPositionX}"][data-y="${newPositionY}"]`);
+                    this.removePiece(newBoardPosition);
+                    enemyElement.remove();
+                    this.isChecked()
+                        ? this.checkedAudio.play()
+                        : this.captureAudio.play();
+                }
+                [this.selectedElement.dataset.x, this.selectedElement.dataset.y] = [
+                    String(newPositionX),
+                    String(newPositionY),
+                ];
+                newBoardElement.insertAdjacentElement("beforeend", this.selectedElement);
+                if (this.selectedPiece instanceof Pawn) {
+                    this.selectedPiece.setHadFirstMove();
+                    if (this.selectedPiece.isPromotable()) {
+                        this.openModal(newPositionX, newPositionY);
+                    }
+                }
+                else if (this.selectedPiece instanceof King) {
+                    this.updateKingPosition(this.selectedPiece);
                 }
             }
-            else if (this.selectedPiece instanceof King) {
-                this.updateKingPosition(this.selectedPiece);
-            }
-            if (this.selectedPiece instanceof Rook ||
-                this.selectedPiece instanceof King) {
-                this.selectedPiece.setHadFirstMove();
-            }
-            this.updateAvailableMoves();
-            this.whitePlayersTurn = !this.whitePlayersTurn;
-            this.updateState();
-            this.clearSquare();
-            this.unselectPiece();
-            this.highlightLastMove(oldPositionX, oldPositionY);
+        }
+        if (this.selectedPiece instanceof Rook ||
+            this.selectedPiece instanceof King) {
+            this.selectedPiece.setHadFirstMove();
+        }
+        this.updateAvailableMoves();
+        this.whitePlayersTurn = !this.whitePlayersTurn;
+        this.updateState();
+        this.clearSquare();
+        this.unselectPiece();
+        this.highlightLastMove(oldPositionX, oldPositionY);
+    }
+    castleKing(rookPiece) {
+        if (!this.selectedPiece)
+            return;
+        const rookX = rookPiece.getX();
+        const rookY = rookPiece.getY();
+        const newBoardElement = document.querySelector(`[data-x="${rookX}"][data-y="${rookY}"]`);
+        if (JSON.parse(newBoardElement.dataset.isMoveableTo)) {
+            console.log(this.selectedPiece);
+            const newKingsPositionY = (rookY > this.selectedPiece.getY() ? 2 : -2) +
+                this.selectedPiece.getY();
+            const kingsCurrentX = this.selectedPiece.getX();
+            const newBoardPosition = this.board[kingsCurrentX][newKingsPositionY];
+            this.movePieceOnBoard(kingsCurrentX, this.selectedPiece.getY(), kingsCurrentX, newKingsPositionY);
+            const newRooksPositionX = (rookY > this.selectedPiece.getY() ? -1 : 1) + newKingsPositionY;
+            this.movePieceOnBoard(rookX, rookY, rookX, newRooksPositionX);
+            rookPiece.setHadFirstMove();
+            this.selectedPiece.setHadFirstMove();
+        }
+        this.unselectPiece();
+    }
+    movePieceOnBoard(oldPositionX, oldPositionY, newPositionX, newPositionY) {
+        const boardSquare = this.getPieces().get(getCoords(oldPositionX, oldPositionY));
+        if (boardSquare instanceof Piece) {
+            this.board[newPositionX][newPositionY] = boardSquare;
+            this.board[oldPositionX][oldPositionY] = 0;
+            boardSquare.setX(newPositionX);
+            boardSquare.setY(newPositionY);
+            this.updatePiece(boardSquare);
+            boardSquare.setCoords(getCoords(newPositionX, newPositionY));
+            const pieceElement = document.querySelector(`.chess-piece[data-x="${oldPositionX}"][data-y="${oldPositionY}"]`);
+            pieceElement.remove();
+            const newSquare = document.querySelector(`.square[data-x="${newPositionX}"][data-y="${newPositionY}"]`);
+            console.log(newSquare);
+            newSquare === null || newSquare === void 0 ? void 0 : newSquare.insertAdjacentElement("beforeend", pieceElement);
         }
     }
     closeModal() {
@@ -523,8 +567,8 @@ class GameBoard {
             .forEach((modalImage) => modalImage.addEventListener("click", (e) => this.promotePawn(e, modalPosX, modalPosY)));
     }
     unselectPiece() {
-        this.selectedElement = undefined;
-        this.selectedPiece = undefined;
+        this.selectedElement = null;
+        this.selectedPiece = null;
     }
     updateKingPosition(piece) {
         piece.getIsWhite()
@@ -648,9 +692,12 @@ class GameBoard {
         this.makeMoves();
         this.whitePlayer.updateMoves();
         this.blackPlayer.updateMoves();
+        this.getCastableMoves();
+        this.checkVictory();
+    }
+    getCastableMoves() {
         this.whitePlayer.canCastle(this.board);
         this.blackPlayer.canCastle(this.board);
-        this.checkVictory();
     }
     dragEnter(e) {
         e.target.classList.add("highlight-border");

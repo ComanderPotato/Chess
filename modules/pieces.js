@@ -280,7 +280,8 @@ export class King extends positionalPiece {
         // If had first move king cant castle
         this.hadFirstMove = true;
     }
-    canCastle(board, player) {
+    getCastableMoves(board, player) {
+        const castableMoves = [];
         if (!this.getHadFirstMove()) {
             const availableRooks = [];
             for (const piece of player.getAvailablePieces().values()) {
@@ -291,10 +292,27 @@ export class King extends positionalPiece {
             }
             for (const rook of availableRooks) {
                 if (!rook.getHadFirstMove()) {
-                    console.log(rook);
+                    let isRookCastable = true;
+                    const rooksX = rook.getX();
+                    let rooksY = rook.getY();
+                    const incrementer = rooksY < this.getY() ? 1 : -1;
+                    do {
+                        rooksY += incrementer;
+                        if (player.getOpponentHeatMap()[rooksX][rooksY] === -1 ||
+                            (board[rooksX][rooksY] instanceof Piece &&
+                                !(board[rooksX][rooksY] instanceof King))) {
+                            isRookCastable = false;
+                            break;
+                        }
+                    } while (rooksY !== this.getY());
+                    if (isRookCastable) {
+                        castableMoves.push([rook.getX(), rook.getY()]);
+                    }
                 }
             }
         }
+        this.appendAvailableMoves(castableMoves);
+        return castableMoves;
     }
 }
 export class Rook extends incrementalPiece {

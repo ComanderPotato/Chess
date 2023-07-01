@@ -65,10 +65,12 @@ export default class Player {
   public setOpponentHeatMap(updatedHeatMap: number[][]): void {
     this.opponentHeatMap = updatedHeatMap;
   }
-  public canCastle(board: (number | Piece)[][]): void {
+  public canCastle(board: (number | Piece)[][]) {
     const king = this.getAvailablePieces().get(
       getCoords(this.kingsPositions[0], this.kingsPositions[1])
     ) as King;
-    king.canCastle(board, this);
+    king.getCastableMoves(board, this);
+    // const moves = king.getCastableMoves(board, this);
+    // return moves;
   }
 }

@@ -58,6 +58,8 @@ export default class Player {
     }
     canCastle(board) {
         const king = this.getAvailablePieces().get(getCoords(this.kingsPositions[0], this.kingsPositions[1]));
-        king.canCastle(board, this);
+        king.getCastableMoves(board, this);
+        // const moves = king.getCastableMoves(board, this);
+        // return moves;
     }
 }
