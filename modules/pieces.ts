@@ -112,6 +112,14 @@ export class Piece {
               !this.isSameColor(newPosition)
             ) {
               validMoves.push([newPositionX, newPositionY]);
+            } else {
+              const possiblePawn = board[this.getX()][newPositionY];
+              if (
+                possiblePawn instanceof Pawn &&
+                possiblePawn.getCanEnPassant()
+              ) {
+                validMoves.push([newPositionX, newPositionY]);
+              }
             }
           }
         }
@@ -233,6 +241,7 @@ export class Pawn extends incrementalPiece {
   private hadFirstMove;
   private legalAttackMoves: [number, number][];
   private availableAttackMoves: [number, number][];
+  private canEnPassant: boolean;
   constructor(x: number, y: number, isWhite: boolean, id: id, coords: string) {
     const [image, legalMoves]: [string, [number, number][]] = isWhite
       ? [
@@ -261,6 +270,7 @@ export class Pawn extends incrementalPiece {
         ];
     this.hadFirstMove = false;
     this.availableAttackMoves = [];
+    this.canEnPassant = false;
   }
   public concatMoves(): void {
     this.setAvailableMoves(
@@ -279,6 +289,12 @@ export class Pawn extends incrementalPiece {
   }
   public getAttacks() {
     return this.legalAttackMoves;
+  }
+  public setCanEnPassant(canEnPassant: boolean): void {
+    this.canEnPassant = canEnPassant;
+  }
+  public getCanEnPassant(): boolean {
+    return this.canEnPassant;
   }
   public setHadFirstMove(): void {
     this.hadFirstMove = true;
@@ -337,10 +353,11 @@ export class King extends positionalPiece {
     // If had first move king cant castle
     this.hadFirstMove = true;
   }
-  public getCastableMoves(
+  public getCastlableMoves(
     board: (Piece | number)[][],
     player: Player
   ): [number, number][] {
+    if (this.hadFirstMove) return [];
     const castableMoves: [number, number][] = [];
     if (!this.getHadFirstMove()) {
       const availableRooks: Rook[] = [];

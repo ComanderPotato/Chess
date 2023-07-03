@@ -1,4 +1,4 @@
-after each move
-update the board,
-generate heatMap
-generate moves
+Bugs to fix:
+When try to move a piece to a position it cant move it changes the players turn.
+Fix rest of castle
+King doesnt get checked when promoting

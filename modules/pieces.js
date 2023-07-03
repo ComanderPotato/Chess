@@ -89,6 +89,13 @@ export class Piece {
                             !this.isSameColor(newPosition)) {
                             validMoves.push([newPositionX, newPositionY]);
                         }
+                        else {
+                            const possiblePawn = board[this.getX()][newPositionY];
+                            if (possiblePawn instanceof Pawn &&
+                                possiblePawn.getCanEnPassant()) {
+                                validMoves.push([newPositionX, newPositionY]);
+                            }
+                        }
                     }
                 }
                 return validMoves;
@@ -210,6 +217,7 @@ export class Pawn extends incrementalPiece {
             ];
         this.hadFirstMove = false;
         this.availableAttackMoves = [];
+        this.canEnPassant = false;
     }
     concatMoves() {
         this.setAvailableMoves(this.getAvailableMoves().concat(this.availableAttackMoves));
@@ -225,6 +233,12 @@ export class Pawn extends incrementalPiece {
     }
     getAttacks() {
         return this.legalAttackMoves;
+    }
+    setCanEnPassant(canEnPassant) {
+        this.canEnPassant = canEnPassant;
+    }
+    getCanEnPassant() {
+        return this.canEnPassant;
     }
     setHadFirstMove() {
         this.hadFirstMove = true;
@@ -280,7 +294,9 @@ export class King extends positionalPiece {
         // If had first move king cant castle
         this.hadFirstMove = true;
     }
-    getCastableMoves(board, player) {
+    getCastlableMoves(board, player) {
+        if (this.hadFirstMove)
+            return [];
         const castableMoves = [];
         if (!this.getHadFirstMove()) {
             const availableRooks = [];
