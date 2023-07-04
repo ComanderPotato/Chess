@@ -22,6 +22,7 @@ class GameBoard {
         this.nextStateStack = [];
         this.whitePlayersTurn = true;
         this.totalPieces = new Map();
+        this.clearSquare();
     }
     createBoard(htmlElement) {
         for (let i = 0; i < this.BOARD_COLS; i++) {
@@ -84,20 +85,8 @@ class GameBoard {
                     default:
                         return;
                 }
-                // isWhite
-                //   ? this.whitePlayer.addPiece(piece)
-                //   : this.blackPlayer.addPiece(piece);
                 this.addPiece(piece);
                 this.createChessElement(square, piece);
-                // const pieceElement = document.createElement("img");
-                // pieceElement.dataset.x = String(x);
-                // pieceElement.dataset.y = String(y);
-                // pieceElement.setAttribute("name", "chess-piece");
-                // this.board[x][y] = piece;
-                // pieceElement.src = piece.getImage();
-                // pieceElement.classList.add("chess-piece");
-                // pieceElement.draggable = true;
-                // square.insertAdjacentElement("beforeend", pieceElement);
                 y++;
             }
         }
@@ -105,7 +94,7 @@ class GameBoard {
         // this.generateHeatMaps();
         this.updateAvailableMoves();
     }
-    createChessElement(boardSquare, piece) {
+    createChessElement(boardSquare, piece, isPromotedPawn) {
         const pieceElement = document.createElement("img");
         pieceElement.dataset.x = String(piece.getX());
         pieceElement.dataset.y = String(piece.getY());
@@ -115,28 +104,10 @@ class GameBoard {
         pieceElement.classList.add("chess-piece");
         pieceElement.draggable = true;
         boardSquare.insertAdjacentElement("beforeend", pieceElement);
-        // Maybe have return img pieceELement to add handlers for promote
-    }
-    getLegalMoves(currentPiece, pawnsAttackMoves = false, board = this.board) {
-        // if (currentPiece instanceof Pawn) {
-        //   if (pawnsAttackMoves) {
-        //     return currentPiece.getValidAttackMoves(board);
-        //   } else {
-        //     return currentPiece.getValidMoves(board);
-        //   }
-        // } else {
-        //   let validMoves = (currentPiece as incrementalPiece).getValidMoves(board);
-        //   if (currentPiece.getID() === "king") {
-        //     const playersMap = currentPiece.getIsWhite()
-        //       ? this.whitePlayer.getOpponentHeatMap()
-        //       : this.blackPlayer.getOpponentHeatMap();
-        //     validMoves = validMoves.filter(
-        //       (move) => playersMap[move[0]][move[1]] === 0
-        //     );
-        //   }
-        //   return validMoves;
-        // }
-        return currentPiece.getLegalAttackMoves(board);
+        if (isPromotedPawn) {
+            pieceElement.addEventListener("click", this.selectPiece.bind(this));
+            pieceElement.addEventListener("dragstart", this.dragStart.bind(this));
+        }
     }
     promotePawn(e, pawnX, pawnY) {
         if (!e.target || !(e.target instanceof HTMLImageElement))
@@ -159,127 +130,23 @@ class GameBoard {
             default:
                 return;
         }
-        // REFACTOR
-        // const boardSquare = document.querySelector(
-        //   `.square[data-x="${pawnX}"][data-y="${pawnY}"]`
-        // ) as HTMLDivElement
-        // (document.querySelector(
-        //   `.chess-piece[data-x="${pawnX}"][data-y="${pawnY}"]`
-        // ) as HTMLImageElement).remove();
-        // this.createChessElement(boardSquare, piece)
-        // REFACTOR
-        const pieceElement = document.createElement("img");
-        pieceElement.dataset.x = String(pawnX);
-        pieceElement.dataset.y = String(pawnY);
-        pieceElement.setAttribute("name", "chess-piece");
-        this.board[pawnX][pawnY] = piece;
-        pieceElement.src = piece.getImage();
-        pieceElement.classList.add("chess-piece");
-        pieceElement.draggable = true;
-        const pawnElement = document.querySelector(`.chess-piece[data-x="${pawnX}"][data-y="${pawnY}"]`);
-        pawnElement.remove();
+        const boardSquare = document.querySelector(`.square[data-x="${pawnX}"][data-y="${pawnY}"]`);
         this.removePiece(pawnToPromote);
-        document.querySelector(`.square[data-x="${pawnX}"][data-y="${pawnY}"]`).insertAdjacentElement("beforeend", pieceElement);
+        this.createChessElement(boardSquare, piece, true);
         this.addPiece(piece);
-        pieceElement.addEventListener("click", this.selectPiece.bind(this));
-        pieceElement.addEventListener("dragstart", this.dragStart.bind(this));
-        this.closeModal();
+        this.closePromotePawnModal();
         this.updateAvailableMoves();
         if (this.isChecked()) {
             this.checkedAudio.play();
         }
     }
-    checkVictory() {
-        const whiteArmy = this.whitePlayer.getAvailablePieces().size;
-        const blackArmy = this.blackPlayer.getAvailablePieces().size;
-        const winner = document.querySelector(".winner");
-        if (this.whitePlayer.getAvailableMoves() === 0) {
-            if (this.whitePlayer.getIsChecked()) {
-                winner.textContent = "Black Win";
-            }
-            else {
-                winner.textContent = "Stale mate";
-            }
-        }
-        else if (this.blackPlayer.getAvailableMoves() === 0) {
-            if (this.blackPlayer.getIsChecked()) {
-                winner.textContent = "White Win";
-            }
-            else {
-                winner.textContent = "Stale mate";
-            }
-        }
-        // else {
-        //   if (
-        //     (whiteArmy === 1 && blackArmy === 1) ||
-        //     (whiteArmy === 16 && blackArmy === 1) ||
-        //     (whiteArmy === 1 && blackArmy === 16)
-        //   ) {
-        //     winner!.textContent = "Insufficient material";
-        //   }
-        //   else {
-        //     const whiteMap = new Map<string, number>();
-        //     const blackMap = new Map<string, number>();
-        //     for (const piece of this.whitePlayer.getAvailablePieces()) {
-        //       whiteMap.set(piece[1].getID(), (whiteMap.get("a") ?? 0) + 1);
-        //     }
-        //     for (const piece of this.blackPlayer.getAvailablePieces()) {
-        //       blackMap.set(piece[1].getID(), (blackMap.get("a") ?? 0) + 1);
-        //     }
-        //     const whiteKing =
-        //       typeof whiteMap.get("king") === "undefined"
-        //         ? 0
-        //         : whiteMap.get("king");
-        //     const blackKing =
-        //       typeof blackMap.get("king") === "undefined"
-        //         ? 0
-        //         : blackMap.get("king");
-        //     const whiteBishop =
-        //       typeof whiteMap.get("bishop") === "undefined"
-        //         ? 0
-        //         : whiteMap.get("bishop");
-        //     const blackBishop =
-        //       typeof blackMap.get("bishop") === "undefined"
-        //         ? 0
-        //         : blackMap.get("bishop");
-        //     const whiteKnight =
-        //       typeof whiteMap.get("knight") === "undefined"
-        //         ? 0
-        //         : whiteMap.get("knight");
-        //     const blackKnight =
-        //       typeof blackMap.get("knight") === "undefined"
-        //         ? 0
-        //         : blackMap.get("knight");
-        //     const blackMinor = blackKnight! + blackBishop!;
-        //     const whiteMinor = whiteKnight! + whiteBishop!;
-        //     console.log(blackMap);
-        //     if (
-        //       (whiteKing === 1 && whiteMinor === 1 && blackKing === 1) ||
-        //       (blackKing === 1 && blackMinor === 1 && whiteKing === 1)
-        //     ) {
-        //       winner!.textContent = "Insufficient material";
-        //     } else if (
-        //       (whiteKing === 1 && whiteKnight === 2 && blackKing === 1) ||
-        //       (blackKing === 1 && blackKnight === 2 && whiteKing === 1)
-        //     ) {
-        //       winner!.textContent = "Insufficient material";
-        //     } else if (
-        //       whiteKing === 1 &&
-        //       whiteMinor === 1 &&
-        //       blackKing === 1 &&
-        //       blackMinor === 1
-        //     ) {
-        //       winner!.textContent = "Insufficient material";
-        //     }
-        //   }
-        //   /*
-        //   King vs king
-        //   King + minor (bishop or knight) piece vs king
-        //   Lone king vs all the pieces
-        //   King + two knights vs king
-        //   King + minor piece vs king + minor piece
-        //   */
-        // }
+    removePiece(piece) {
+        // this.getPieces().delete(piece.getCoords())
+        document.querySelector(`.chess-piece[data-x="${piece.getX()}"][data-y="${piece.getY()}"]`).remove();
+        this.board[piece.getX()][piece.getY()] = 0;
+        piece.getIsWhite()
+            ? this.whitePlayer.removePiece(piece)
+            : this.blackPlayer.removePiece(piece);
     }
     getGeneratedMoves(currentPiece, clonedBoard, clonedHeatMap, kingsPosition) {
         // const viableMoves: [number, number][] = [];
@@ -380,7 +247,7 @@ class GameBoard {
         this.whitePlayer.setOpponentHeatMap(tempBlackHeatMap);
         this.blackPlayer.setOpponentHeatMap(tempWhiteHeatMap);
     }
-    // public generateCheckedMoves(
+    // private generateCheckedMoves(
     //   tempBoard: Array<Piece[] | number[]>,
     //   isWhite: boolean
     // ): boolean {
@@ -425,6 +292,7 @@ class GameBoard {
         const currentX = Number(e.target.dataset.x);
         const currentY = Number(e.target.dataset.y);
         const newPiece = this.board[currentX][currentY];
+        this.viewBoard();
         if (this.selectedPiece instanceof Piece &&
             newPiece instanceof Piece &&
             this.selectedPiece.getIsWhite() !== newPiece.getIsWhite() &&
@@ -451,10 +319,13 @@ class GameBoard {
     //   const newPositionX = Number(newCoords.x);
     //   const newPositionY = Number(newCoords.y);
     // }
-    highlightLastMove(posX, posY) {
+    addLastMoveHighlight(posX, posY) {
+        document.querySelector(`.square[data-x="${posX}"][data-y="${posY}"]`).classList.add("previous-move-highlight");
+    }
+    removeLastMoveHighlight() {
         var _a;
         (_a = document
-            .querySelector(`.square[data-x="${posX}"][data-y="${posY}"]`)) === null || _a === void 0 ? void 0 : _a.classList.add("highlight-box");
+            .querySelector(`.previous-move-highlight`)) === null || _a === void 0 ? void 0 : _a.classList.remove("previous-move-highlight");
     }
     showAvailableMoves(e) {
         var _a;
@@ -494,6 +365,7 @@ class GameBoard {
             return;
         const newBoardElement = document.querySelector(`[data-x="${newPositionX}"][data-y="${newPositionY}"]`);
         if (JSON.parse(newBoardElement.dataset.isMoveableTo)) {
+            this.removeLastMoveHighlight();
             this.whitePlayersTurn = !this.whitePlayersTurn;
             if (this.selectedPiece instanceof King &&
                 this.board[newPositionX][newPositionY] instanceof Rook) {
@@ -502,39 +374,14 @@ class GameBoard {
             else {
                 this.whitePlayer.setIsChecked(false);
                 this.blackPlayer.setIsChecked(false);
-                const newBoardPosition = this.board[newPositionX][newPositionY];
-                this.movePieceOnBoard(oldPositionX, oldPositionY, newPositionX, newPositionY);
-                if (typeof newBoardPosition === "number") {
-                    this.isChecked() ? this.checkedAudio.play() : this.placeAudio.play();
-                }
-                else {
-                    this.removePiece(newBoardPosition);
-                    document.querySelector(`.chess-piece[data-x="${newPositionX}"][data-y="${newPositionY}"]`).remove();
-                    this.isChecked()
-                        ? this.checkedAudio.play()
-                        : this.captureAudio.play();
-                }
-                // if (this.selectedPiece instanceof Pawn) {
-                //   this.selectedPiece.setHadFirstMove();
-                //   if (this.selectedPiece.isPromotable()) {
-                //     this.openModal(newPositionX, newPositionY);
-                //   }
-                // } else if (this.selectedPiece instanceof King) {
-                //   this.updateKingPosition(this.selectedPiece);
-                // }
+                this.movePieceOnBoard(oldPositionX, oldPositionY, newPositionX, newPositionY).play();
             }
-            // if (
-            //   this.selectedPiece instanceof Rook ||
-            //   this.selectedPiece instanceof King
-            // ) {
-            //   this.selectedPiece.setHadFirstMove();
-            // }
+            this.addLastMoveHighlight(oldPositionX, oldPositionY);
+            this.clearSquare();
         }
         this.updateAvailableMoves();
-        this.clearSquare();
         this.unselectPiece();
         this.updateState();
-        this.highlightLastMove(oldPositionX, oldPositionY);
         // Use something like this for dragged element
         // document.querySelector(".boobs")?.remove();
     }
@@ -548,7 +395,6 @@ class GameBoard {
             const newKingsPositionY = (rookY > this.selectedPiece.getY() ? 2 : -2) +
                 this.selectedPiece.getY();
             const kingsCurrentX = this.selectedPiece.getX();
-            const newBoardPosition = this.board[kingsCurrentX][newKingsPositionY];
             this.movePieceOnBoard(kingsCurrentX, this.selectedPiece.getY(), kingsCurrentX, newKingsPositionY);
             const newRooksPositionX = (rookY > this.selectedPiece.getY() ? -1 : 1) + newKingsPositionY;
             this.movePieceOnBoard(rookX, rookY, rookX, newRooksPositionX);
@@ -559,8 +405,13 @@ class GameBoard {
         this.unselectPiece();
     }
     movePieceOnBoard(oldPositionX, oldPositionY, newPositionX, newPositionY) {
+        let moveSound = this.placeAudio;
         const boardSquare = this.getPieces().get(getCoords(oldPositionX, oldPositionY));
         const currentPiece = this.board[newPositionX][newPositionY];
+        if (currentPiece instanceof Piece) {
+            this.removePiece(currentPiece);
+            moveSound = this.captureAudio;
+        }
         this.board[newPositionX][newPositionY] = boardSquare;
         this.board[oldPositionX][oldPositionY] = 0;
         boardSquare.setX(newPositionX);
@@ -572,7 +423,6 @@ class GameBoard {
             String(newPositionX),
             String(newPositionY),
         ];
-        pieceElement.remove();
         const newSquare = document.querySelector(`.square[data-x="${newPositionX}"][data-y="${newPositionY}"]`);
         newSquare.insertAdjacentElement("beforeend", pieceElement);
         // if (boardSquare instanceof King) {
@@ -583,19 +433,19 @@ class GameBoard {
             boardSquare instanceof Pawn) {
             if (boardSquare instanceof Pawn) {
                 if (boardSquare.isPromotable()) {
-                    this.openModal(newPositionX, newPositionY);
+                    this.openPromotePawnModal(newPositionX, newPositionY);
                 }
                 else if (!boardSquare.getHadFirstMove()) {
-                    const pawnDistance = Math.abs(oldPositionX - newPositionX);
-                    if (pawnDistance === 2) {
+                    // const pawnDistance = Math.abs(oldPositionX - newPositionX);
+                    if (Math.abs(oldPositionX - newPositionX) === 2) {
                         boardSquare.setCanEnPassant(true);
                     }
                 }
                 else if (oldPositionY !== newPositionY &&
                     !(currentPiece instanceof Piece)) {
-                    document.querySelector(`.chess-piece[data-x="${oldPositionX}"][data-y="${newPositionY}"]`).remove();
-                    this.board[oldPositionX][newPositionY] = 0;
-                    this.captureAudio.play();
+                    const pawn = this.board[oldPositionX][newPositionY];
+                    this.removePiece(pawn);
+                    moveSound = this.captureAudio;
                 }
             }
             else if (boardSquare instanceof King) {
@@ -603,14 +453,7 @@ class GameBoard {
             }
             boardSquare.setHadFirstMove();
         }
-        // if (this.selectedPiece instanceof Pawn) {
-        //   this.selectedPiece.setHadFirstMove();
-        //   if (this.selectedPiece.isPromotable()) {
-        //     this.openModal(newPositionX, newPositionY);
-        //   }
-        // } else if (this.selectedPiece instanceof King) {
-        //   this.updateKingPosition(this.selectedPiece);
-        // }
+        return this.isChecked() ? this.checkedAudio : moveSound;
     }
     unsetEnPassant() {
         this.getPieces().forEach((piece) => {
@@ -618,13 +461,13 @@ class GameBoard {
                 piece.setCanEnPassant(false);
         });
     }
-    closeModal() {
+    closePromotePawnModal() {
         document
             .querySelectorAll(".modal-image")
             .forEach((modalImage) => modalImage.removeEventListener("click", this.promotePawn.bind, true));
         document.querySelector(".modal").classList.remove("visible-modal");
     }
-    openModal(modalPosX, modalPosY) {
+    openPromotePawnModal(modalPosX, modalPosY) {
         const isWhite = this.board[modalPosX][modalPosY].getIsWhite();
         isWhite ? ".modal--white" : ".modal--white";
         const modal = document.querySelector(`${isWhite ? ".modal--white" : ".modal--black"}`);
@@ -644,6 +487,25 @@ class GameBoard {
             : this.blackPlayer.setKingsPosition(piece.getX(), piece.getY());
     }
     isChecked() {
+        // for(const row of this.board) {
+        //   for(const piece of row) {
+        //     if(typeof piece === "number") continue;
+        //     const legalMoves = piece.getValidMoves(this.board);
+        //     for(const possibleMove of legalMoves) {
+        //       const newSquare = this.board[possibleMove[0]][possibleMove[1]];
+        //       if (typeof newSquare === "number") continue;
+        //       if (
+        //         !piece.isSameColor(newSquare) &&
+        //         newSquare instanceof King
+        //       ) {
+        //         this.whitePlayersTurn
+        //           ? this.whitePlayer.setIsChecked(true)
+        //           : this.blackPlayer.setIsChecked(true);
+        //         return true;
+        //       }
+        //     }
+        //   }
+        // }
         for (let i = 0; i < this.board.length; i++) {
             for (let currentPiece of this.board[i]) {
                 if (typeof currentPiece === "number")
@@ -654,9 +516,7 @@ class GameBoard {
                     if (typeof newSquare === "number")
                         continue;
                     if (!currentPiece.isSameColor(newSquare) &&
-                        newSquare.getID() === "king") {
-                        // this.updateAvailableMoves();
-                        // this.generateValidNextMoveS();
+                        newSquare instanceof King) {
                         this.whitePlayersTurn
                             ? this.whitePlayer.setIsChecked(true)
                             : this.blackPlayer.setIsChecked(true);
@@ -678,12 +538,6 @@ class GameBoard {
     }
     getPieces() {
         return this.totalPieces;
-    }
-    removePiece(piece) {
-        // this.getPieces().delete(piece.getCoords())
-        piece.getIsWhite()
-            ? this.whitePlayer.removePiece(piece)
-            : this.blackPlayer.removePiece(piece);
     }
     updatePiece(piece) {
         const oldCoords = piece.getCoords();
@@ -755,8 +609,6 @@ class GameBoard {
                 ? this.whitePlayer.addPiece(piece)
                 : this.blackPlayer.addPiece(piece);
         });
-        // this.whitePlayer.updateMoves();
-        // this.blackPlayer.updateMoves();
         this.generateValidNextMoves();
         this.whitePlayer.updateMoves();
         this.blackPlayer.updateMoves();
@@ -793,7 +645,6 @@ class GameBoard {
     dragStart(e) {
         if (!e.target || !(e.target instanceof HTMLImageElement))
             return;
-        // document.body.addEventListener("")
         const currentX = Number(e.target.dataset.x);
         const currentY = Number(e.target.dataset.y);
         this.showAvailableMoves(e);
@@ -931,9 +782,9 @@ class GameBoard {
         document
             .querySelectorAll(".chess-piece")
             .forEach((piece) => piece.remove());
-        // this.createGame();
         this.createChessPieces();
         this.addChessHandlers();
+        this.removeLastMoveHighlight();
     }
     addChessHandlers() {
         document.querySelectorAll(".chess-piece").forEach((piece) => {
@@ -969,172 +820,102 @@ class GameBoard {
         this.addChessHandlers();
         this.addPageHandlers();
     }
+    checkVictory() {
+        const whiteArmy = this.whitePlayer.getAvailablePieces().size;
+        const blackArmy = this.blackPlayer.getAvailablePieces().size;
+        const winner = document.querySelector(".winner");
+        if (this.whitePlayer.getAvailableMoves() === 0) {
+            if (this.whitePlayer.getIsChecked()) {
+                winner.textContent = "Black Win";
+            }
+            else {
+                winner.textContent = "Stale mate";
+            }
+        }
+        else if (this.blackPlayer.getAvailableMoves() === 0) {
+            if (this.blackPlayer.getIsChecked()) {
+                winner.textContent = "White Win";
+            }
+            else {
+                winner.textContent = "Stale mate";
+            }
+        }
+        // else {
+        //   if (
+        //     (whiteArmy === 1 && blackArmy === 1) ||
+        //     (whiteArmy === 16 && blackArmy === 1) ||
+        //     (whiteArmy === 1 && blackArmy === 16)
+        //   ) {
+        //     winner!.textContent = "Insufficient material";
+        //   }
+        //   else {
+        //     const whiteMap = new Map<string, number>();
+        //     const blackMap = new Map<string, number>();
+        //     for (const piece of this.whitePlayer.getAvailablePieces()) {
+        //       whiteMap.set(piece[1].getID(), (whiteMap.get("a") ?? 0) + 1);
+        //     }
+        //     for (const piece of this.blackPlayer.getAvailablePieces()) {
+        //       blackMap.set(piece[1].getID(), (blackMap.get("a") ?? 0) + 1);
+        //     }
+        //     const whiteKing =
+        //       typeof whiteMap.get("king") === "undefined"
+        //         ? 0
+        //         : whiteMap.get("king");
+        //     const blackKing =
+        //       typeof blackMap.get("king") === "undefined"
+        //         ? 0
+        //         : blackMap.get("king");
+        //     const whiteBishop =
+        //       typeof whiteMap.get("bishop") === "undefined"
+        //         ? 0
+        //         : whiteMap.get("bishop");
+        //     const blackBishop =
+        //       typeof blackMap.get("bishop") === "undefined"
+        //         ? 0
+        //         : blackMap.get("bishop");
+        //     const whiteKnight =
+        //       typeof whiteMap.get("knight") === "undefined"
+        //         ? 0
+        //         : whiteMap.get("knight");
+        //     const blackKnight =
+        //       typeof blackMap.get("knight") === "undefined"
+        //         ? 0
+        //         : blackMap.get("knight");
+        //     const blackMinor = blackKnight! + blackBishop!;
+        //     const whiteMinor = whiteKnight! + whiteBishop!;
+        //     console.log(blackMap);
+        //     if (
+        //       (whiteKing === 1 && whiteMinor === 1 && blackKing === 1) ||
+        //       (blackKing === 1 && blackMinor === 1 && whiteKing === 1)
+        //     ) {
+        //       winner!.textContent = "Insufficient material";
+        //     } else if (
+        //       (whiteKing === 1 && whiteKnight === 2 && blackKing === 1) ||
+        //       (blackKing === 1 && blackKnight === 2 && whiteKing === 1)
+        //     ) {
+        //       winner!.textContent = "Insufficient material";
+        //     } else if (
+        //       whiteKing === 1 &&
+        //       whiteMinor === 1 &&
+        //       blackKing === 1 &&
+        //       blackMinor === 1
+        //     ) {
+        //       winner!.textContent = "Insufficient material";
+        //     }
+        //   }
+        //   /*
+        //   King vs king
+        //   King + minor (bishop or knight) piece vs king
+        //   Lone king vs all the pieces
+        //   King + two knights vs king
+        //   King + minor piece vs king + minor piece
+        //   */
+        // }
+    }
 }
 (function () {
     const board = new GameBoard();
-    // new GameBoard();
-    // const gameBoard = document.querySelector(".gameBoard") as HTMLDivElement;
-    // board.createBoard(gameBoard);
-    // board.createPieces();
-    // document.querySelectorAll(".chess-piece").forEach((piece) => {
-    //   piece.addEventListener("click", (e) => board.showAvailableMoves(e));
-    //   piece.addEventListener("dragstart", (e) => board.dragStart(e));
-    // });
-    // document.querySelectorAll(".square").forEach((square) => {
-    //   square.addEventListener("click", (e) => board.movePiece(e));
-    //   square.addEventListener("dragover", (e) => board.dragOver(e));
-    //   square.addEventListener("drop", (e) => board.dropPiece(e));
-    //   square.addEventListener("dragleave", (e) => board.dragLeave(e));
-    //   square.addEventListener("dragenter", (e) => board.dragEnter(e));
-    // });
 })();
 function isLowerCase(charCode) {
     return charCode >= 97 && charCode <= 122;
 }
-// private movePiece(e: Event) {
-//   if (
-//     e.target instanceof HTMLImageElement ||
-//     typeof this.selectedPiece === "undefined" ||
-//     !this.selectedPiece ||
-//     typeof this.selectedElement === "undefined" ||
-//     !this.selectedElement ||
-//     !e.target ||
-//     typeof e.target === "undefined" ||
-//     !(e.target instanceof HTMLDivElement)
-//   ) {
-//     return;
-//   }
-//   this.clearSquare();
-//   const newPositionX = Number(e.target.dataset.x);
-//   const newPositionY = Number(e.target.dataset.y);
-//   const oldPositionX = Number(this.selectedElement.dataset.x);
-//   const oldPositionY = Number(this.selectedElement.dataset.y);
-//   const newBoardElement = document.querySelector(
-//     `[data-x="${newPositionX}"][data-y="${newPositionY}"]`
-//   ) as HTMLDivElement;
-//   const availabeMoves = this.totalPieces
-//     .get(this.selectedPiece.getCoords())!
-//     .getAvailableMoves();
-//   if (typeof availabeMoves === "undefined") return;
-//   for (const moves of availabeMoves) {
-//     if (moves[0] === newPositionX && moves[1] === newPositionY) {
-//       if (
-//         this.whitePlayer.getIsChecked() ||
-//         this.blackPlayer.getIsChecked()
-//       ) {
-//         this.whitePlayer.setIsChecked(false);
-//         this.blackPlayer.setIsChecked(false);
-//       }
-//       const newBoardPosition = this.board[newPositionX][newPositionY];
-//       this.board[newPositionX][newPositionY] = this.selectedPiece;
-//       this.board[oldPositionX][oldPositionY] = 0;
-//       this.selectedPiece.setX(newPositionX);
-//       this.selectedPiece.setY(newPositionY);
-//       this.updatePiece(this.selectedPiece);
-//       this.selectedPiece.setCoords(getCoords(newPositionX, newPositionY));
-//       if (typeof newBoardPosition === "number") {
-//         this.isChecked() ? this.checkedAudio.play() : this.placeAudio.play();
-//       } else {
-//         const enemyElement = document.querySelector(
-//           `.chess-piece[data-x="${newPositionX}"][data-y="${newPositionY}"]`
-//         ) as HTMLImageElement;
-//         this.removePiece(newBoardPosition);
-//         enemyElement.remove();
-//         this.isChecked()
-//           ? this.checkedAudio.play()
-//           : this.captureAudio.play();
-//       }
-//       [this.selectedElement.dataset.x, this.selectedElement.dataset.y] = [
-//         String(newPositionX),
-//         String(newPositionY),
-//       ];
-//       newBoardElement.insertAdjacentElement(
-//         "beforeend",
-//         this.selectedElement!
-//       );
-//       if (this.selectedPiece instanceof Pawn) {
-//         (this.selectedPiece as Pawn).setHadFirstMove();
-//       }
-//       if (this.selectedPiece instanceof King) {
-//         this.updateKingPosition(this.selectedPiece);
-//       }
-//       this.updateAvailableMoves();
-//       this.whitePlayersTurn = !this.whitePlayersTurn;
-//       this.updateState();
-//     }
-//   }
-// }
-// private dropPiece(e: Event): void {
-//   this.clearSquare();
-//   this.dragLeave(e);
-//   if (
-//     !e.target ||
-//     !(
-//       e.target instanceof HTMLDivElement ||
-//       e.target instanceof HTMLImageElement
-//     ) ||
-//     !this.draggedElement ||
-//     !this.beingDragged ||
-//     !(
-//       (this.whitePlayersTurn && this.draggedElement.getIsWhite()) ||
-//       (!this.whitePlayersTurn && !this.draggedElement.getIsWhite())
-//     )
-//   ) {
-//     return;
-//   }
-//   const newPositionX = Number(e.target.dataset.x);
-//   const newPositionY = Number(e.target.dataset.y);
-//   const oldPositionX = Number(this.beingDragged.dataset.x);
-//   const oldPositionY = Number(this.beingDragged.dataset.y);
-//   const newBoardElement = document.querySelector(
-//     `[data-x="${newPositionX}"][data-y="${newPositionY}"]`
-//   ) as HTMLDivElement;
-//   const availabeMoves = this.totalPieces
-//     .get(this.draggedElement.getCoords())!
-//     .getAvailableMoves();
-//   if (typeof availabeMoves === "undefined") return;
-//   for (const moves of availabeMoves) {
-//     if (moves[0] === newPositionX && moves[1] === newPositionY) {
-//       if (
-//         this.whitePlayer.getIsChecked() ||
-//         this.blackPlayer.getIsChecked()
-//       ) {
-//         this.whitePlayer.setIsChecked(false);
-//         this.blackPlayer.setIsChecked(false);
-//       }
-//       const newBoardPosition = this.board[newPositionX][newPositionY];
-//       this.board[newPositionX][newPositionY] = this.draggedElement;
-//       this.board[oldPositionX][oldPositionY] = 0;
-//       this.draggedElement.setX(newPositionX);
-//       this.draggedElement.setY(newPositionY);
-//       this.updatePiece(this.draggedElement);
-//       this.draggedElement.setCoords(getCoords(newPositionX, newPositionY));
-//       if (typeof newBoardPosition === "number") {
-//         this.isChecked() ? this.checkedAudio.play() : this.placeAudio.play();
-//       } else {
-//         const enemyElement = document.querySelector(
-//           `.chess-piece[data-x="${newPositionX}"][data-y="${newPositionY}"]`
-//         ) as HTMLImageElement;
-//         this.removePiece(newBoardPosition);
-//         enemyElement.remove();
-//         this.isChecked()
-//           ? this.checkedAudio.play()
-//           : this.captureAudio.play();
-//       }
-//       [this.beingDragged.dataset.x, this.beingDragged.dataset.y] = [
-//         String(newPositionX),
-//         String(newPositionY),
-//       ];
-//       newBoardElement.insertAdjacentElement("beforeend", this.beingDragged!);
-//       if (this.draggedElement instanceof Pawn) {
-//         (this.draggedElement as Pawn).setHadFirstMove();
-//       }
-//       if (this.draggedElement instanceof King) {
-//         this.updateKingPosition(this.draggedElement);
-//       }
-//       this.updateAvailableMoves();
-//       this.whitePlayersTurn = !this.whitePlayersTurn;
-//       this.updateState();
-//     }
-//   }
-// }

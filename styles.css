@@ -44,6 +44,7 @@
 .highlight-border {
   border: 4px rgba(255, 255, 255, 0.767) solid;
 }
+.previous-move-highlight,
 .highlight-box {
   background-color: rgba(227, 252, 196, 0.658);
 }
