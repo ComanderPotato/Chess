@@ -2,6 +2,7 @@
 *:before,
 *:after {
   box-sizing: border-box;
+  font-family: sans-serif;
 }
 .gameBoard {
   height: 800px;
@@ -16,8 +17,8 @@
 .square {
   width: 100px;
   height: 100px;
-  background-color: rgb(247, 211, 211);
   display: grid;
+  background-color: rgb(247, 211, 211);
   place-content: center;
   position: relative;
 }
@@ -97,4 +98,68 @@
 }
 .visible-modal {
   display: flex;
+}
+
+.timer {
+  position: absolute;
+  right: -80px;
+  font-size: 24px;
+  pointer-events: none;
+  user-select: none;
+}
+.timer-rotate {
+  left: -80px;
+  right: initial;
+  transform: rotate(180deg);
+}
+.timer-white {
+  bottom: 0;
+}
+.square--coords {
+  color: rgb(247, 211, 211);
+  font-size: 24px;
+  font-weight: bold;
+  position: absolute;
+  padding: 5px;
+  pointer-events: none;
+  user-select: none;
+}
+.square--coords-x {
+}
+.square--coords-y {
+  right: 0;
+  bottom: 0;
+}
+.square--coords--off-color {
+  color: rgb(165, 124, 124);
+}
+.square--coords-secondary {
+  transform: rotate(180deg);
+}
+.square--coords-secondary-x {
+  bottom: 0;
+  right: 0;
+}
+.square--coords-secondary-y {
+  right: inherit;
+  bottom: inherit;
+}
+.square--coords-hidden {
+  display: none;
+}
+
+.board {
+  display: flex;
+  flex-direction: column;
+}
+.player--card {
+  /* background-color: blue; */
+  width: 800px;
+  height: 50px;
+}
+.player--card-top {
+  order: 0;
+}
+.player--card-bottom {
+  order: 3;
 }

@@ -245,14 +245,14 @@ export class Pawn extends incrementalPiece {
   constructor(x: number, y: number, isWhite: boolean, id: id, coords: string) {
     const [image, legalMoves]: [string, [number, number][]] = isWhite
       ? [
-          "https://www.chess.com/chess-themes/pieces/neo/150/wp.png",
+          "../assets/images/wp.png",
           [
             [-1, 0],
             [-2, 0],
           ],
         ]
       : [
-          "https://www.chess.com/chess-themes/pieces/neo/150/bp.png",
+          "../assets/images/bp.png",
           [
             [1, 0],
             [2, 0],
@@ -310,8 +310,8 @@ export class Pawn extends incrementalPiece {
 export class Queen extends incrementalPiece {
   constructor(x: number, y: number, isWhite: boolean, id: id, coords: string) {
     const image: string = isWhite
-      ? "https://www.chess.com/chess-themes/pieces/neo/150/wq.png"
-      : "https://www.chess.com/chess-themes/pieces/neo/150/bq.png";
+      ? "../assets/images/wq.png"
+      : "../assets/images/bq.png";
 
     const legalMoves: [number, number][] = [
       [1, 1],
@@ -330,8 +330,8 @@ export class King extends positionalPiece {
   hadFirstMove;
   constructor(x: number, y: number, isWhite: boolean, id: id, coords: string) {
     const image: string = isWhite
-      ? "https://www.chess.com/chess-themes/pieces/neo/150/wk.png"
-      : "https://www.chess.com/chess-themes/pieces/neo/150/bk.png";
+      ? "../assets/images/wk.png"
+      : "../assets/images/bk.png";
 
     const legalMoves: [number, number][] = [
       [0, 1],
@@ -397,8 +397,8 @@ export class Rook extends incrementalPiece {
   private hadFirstMove;
   constructor(x: number, y: number, isWhite: boolean, id: id, coords: string) {
     const image: string = isWhite
-      ? "https://www.chess.com/chess-themes/pieces/neo/150/wr.png"
-      : "https://www.chess.com/chess-themes/pieces/neo/150/br.png";
+      ? "../assets/images/wr.png"
+      : "../assets/images/br.png";
 
     const legalMoves: [number, number][] = [
       [0, 1],
@@ -420,8 +420,8 @@ export class Rook extends incrementalPiece {
 export class Bishop extends incrementalPiece {
   constructor(x: number, y: number, isWhite: boolean, id: id, coords: string) {
     const image: string = isWhite
-      ? "https://www.chess.com/chess-themes/pieces/neo/150/wb.png"
-      : "https://www.chess.com/chess-themes/pieces/neo/150/bb.png";
+      ? "../assets/images/wb.png"
+      : "../assets/images/bb.png";
 
     const legalMoves: [number, number][] = [
       [1, 1],
@@ -435,8 +435,8 @@ export class Bishop extends incrementalPiece {
 export class Knight extends positionalPiece {
   constructor(x: number, y: number, isWhite: boolean, id: id, coords: string) {
     const image: string = isWhite
-      ? "https://www.chess.com/chess-themes/pieces/neo/150/wn.png"
-      : "https://www.chess.com/chess-themes/pieces/neo/150/bn.png";
+      ? "../assets/images/wn.png"
+      : "../assets/images/bn.png";
 
     const legalMoves: [number, number][] = [
       [2, 1],

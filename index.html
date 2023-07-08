@@ -9,60 +9,77 @@
     <script src="script.js" type="module" defer></script>
   </head>
   <body>
-    <div class="gameBoard">
-      <div class="modal modal--white">
-        <img
-          class="modal-image"
-          src="https://www.chess.com/chess-themes/pieces/neo/150/wq.png"
-          alt="queen image"
-          data-piece="queen"
-        />
-        <img
-          class="modal-image"
-          src="https://www.chess.com/chess-themes/pieces/neo/150/wn.png"
-          alt="knight image"
-          data-piece="knight"
-        />
-        <img
-          class="modal-image"
-          src="https://www.chess.com/chess-themes/pieces/neo/150/wr.png"
-          alt="rook image"
-          data-piece="rook"
-        />
-        <img
-          class="modal-image"
-          src="https://www.chess.com/chess-themes/pieces/neo/150/wb.png"
-          alt="bishop image"
-          data-piece="bishop"
-        />
+    <div class="board">
+      <div class="player--card player--card-top">
+        <span>Name</span>
       </div>
-      <div class="modal modal--black">
-        <img
-          class="modal-image"
-          src="https://www.chess.com/chess-themes/pieces/neo/150/bq.png"
-          alt="queen image"
-          data-piece="queen"
-        />
-        <img
-          class="modal-image"
-          src="https://www.chess.com/chess-themes/pieces/neo/150/bn.png"
-          alt="knight image"
-          data-piece="knight"
-        />
-        <img
-          class="modal-image"
-          src="https://www.chess.com/chess-themes/pieces/neo/150/br.png"
-          alt="rook image"
-          data-piece="rook"
-        />
-        <img
-          class="modal-image"
-          src="https://www.chess.com/chess-themes/pieces/neo/150/bb.png"
-          alt="bishop image"
-          data-piece="bishop"
-        />
+      <div class="gameBoard">
+        <div class="timer timer-white">
+          <span id="timer--minutes-white"></span>:
+          <span id="timer--seconds-white"></span>
+        </div>
+        <div class="timer timer-black">
+          <span id="timer--minutes-black"></span>:
+          <span id="timer--seconds-black"></span>
+        </div>
+        <div class="modal modal--white">
+          <img
+            class="modal-image"
+            src="https://www.chess.com/chess-themes/pieces/neo/150/wq.png"
+            alt="queen image"
+            data-piece="queen"
+          />
+          <img
+            class="modal-image"
+            src="https://www.chess.com/chess-themes/pieces/neo/150/wn.png"
+            alt="knight image"
+            data-piece="knight"
+          />
+          <img
+            class="modal-image"
+            src="https://www.chess.com/chess-themes/pieces/neo/150/wr.png"
+            alt="rook image"
+            data-piece="rook"
+          />
+          <img
+            class="modal-image"
+            src="https://www.chess.com/chess-themes/pieces/neo/150/wb.png"
+            alt="bishop image"
+            data-piece="bishop"
+          />
+        </div>
+        <div class="modal modal--black">
+          <img
+            class="modal-image"
+            src="https://www.chess.com/chess-themes/pieces/neo/150/bq.png"
+            alt="queen image"
+            data-piece="queen"
+          />
+          <img
+            class="modal-image"
+            src="https://www.chess.com/chess-themes/pieces/neo/150/bn.png"
+            alt="knight image"
+            data-piece="knight"
+          />
+          <img
+            class="modal-image"
+            src="https://www.chess.com/chess-themes/pieces/neo/150/br.png"
+            alt="rook image"
+            data-piece="rook"
+          />
+          <img
+            class="modal-image"
+            src="https://www.chess.com/chess-themes/pieces/neo/150/bb.png"
+            alt="bishop image"
+            data-piece="bishop"
+          />
+        </div>
+      </div>
+      <div class="player--card player--card-bottom">
+        <span>Name1</span>
       </div>
     </div>
+
     <h1 class="winner"></h1>
     <button class="rot">rotate</button>
     <button class="restart">Restart</button>

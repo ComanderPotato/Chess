@@ -1,5 +1,6 @@
 import { Piece, King } from "./pieces";
 import getCoords from "./Utils/Coordinates.js";
+import Timer from "./Timer.js";
 export default class Player {
   private isWhite: boolean;
   private availablePieces: Map<string, Piece>;
@@ -7,13 +8,16 @@ export default class Player {
   private isChecked: boolean = false;
   private kingsPositions: [number, number];
   private opponentHeatMap: number[][] = [];
-
+  private playersTimer: Timer;
   constructor(isWhite: boolean, kingsPosition: [number, number]) {
     this.isWhite = isWhite;
     this.kingsPositions = kingsPosition;
     this.availablePieces = new Map<string, Piece>();
+    this.playersTimer = new Timer(10, isWhite);
   }
-
+  public getPlayersTimer(): Timer {
+    return this.playersTimer;
+  }
   public addPiece(piece: Piece): void {
     this.availablePieces.set(piece.getCoords(), piece);
   }
@@ -72,5 +76,8 @@ export default class Player {
     king.getCastlableMoves(board, this);
     // const moves = king.getCastableMoves(board, this);
     // return moves;
+  }
+  public createNewTimer() {
+    this.playersTimer.resetTimer();
   }
 }
