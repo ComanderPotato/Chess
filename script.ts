@@ -253,12 +253,12 @@ class GameBoard {
   }
   private removePiece(piece: Piece): void {
     // this.getPieces().delete(piece.getCoords())
+    this.changeCount(piece);
     (
       document.querySelector(
         `.chess-piece[data-x="${piece.getX()}"][data-y="${piece.getY()}"]`
       ) as HTMLImageElement
     ).remove();
-    this.changeCount(piece);
     this.board[piece.getX()][piece.getY()] = 0;
     piece.getIsWhite()
       ? this.whitePlayer.removePiece(piece)
@@ -498,12 +498,11 @@ class GameBoard {
       ) ||
       !this.selectedPiece ||
       !this.selectedElement ||
-      !e.target
-      // ||
-      // !(
-      //   (this.whitePlayersTurn && this.selectedPiece.getIsWhite()) ||
-      //   (!this.whitePlayersTurn && !this.selectedPiece.getIsWhite())
-      // )
+      !e.target ||
+      !(
+        (this.whitePlayersTurn && this.selectedPiece.getIsWhite()) ||
+        (!this.whitePlayersTurn && !this.selectedPiece.getIsWhite())
+      )
     ) {
       return;
     }
@@ -967,18 +966,37 @@ class GameBoard {
       }
     }
   }
+  private resetCapturedPieces() {
+    document.querySelectorAll(".captured--pieces").forEach((el) => {
+      el.childNodes.forEach((child) => {
+        if (child instanceof HTMLSpanElement) {
+        }
+        console.log(child);
+      });
+    });
+  }
   private changeCount(piece: Piece) {
-    // const color = enemyPiece.isWhite ? "b" : "w";
-    const countEl = document.getElementById(
-      `$captured--${piece.getType()}-${piece.getIsWhite() ? "w" : "b"}`
+    const capturedPiecesEl = document.getElementById(
+      `captured--${piece.getID()}-${piece.getIsWhite() ? "w" : "b"}`
     ) as HTMLSpanElement;
-    const oldClassName = countEl.classList[countEl.classList.length - 1];
-    countEl.classList.remove(oldClassName);
-    const newClassName = oldClassName.replace(
-      oldClassName.charAt(18),
-      String(Number(oldClassName.charAt(18)) + 1)
-    );
-    countEl.classList.add(newClassName);
+    const oldClassName =
+      capturedPiecesEl.classList[capturedPiecesEl.classList.length - 1];
+    let capturedPieceCount = Number(oldClassName.charAt(19));
+    if (
+      (piece instanceof Pawn && capturedPieceCount < 8) ||
+      (piece instanceof Queen && capturedPieceCount < 1) ||
+      ((piece instanceof Rook ||
+        piece instanceof Bishop ||
+        piece instanceof Knight) &&
+        capturedPieceCount < 2)
+    ) {
+      capturedPiecesEl.classList.remove(oldClassName);
+      const newClassName = oldClassName.replace(
+        oldClassName.charAt(19),
+        String(capturedPieceCount + 1)
+      );
+      capturedPiecesEl.classList.add(newClassName);
+    }
   }
   // const square = document.querySelector(
   //   `.square[data-x="${x}"][data-y="${y}"]`
@@ -1018,14 +1036,15 @@ class GameBoard {
       "rotate"
     );
     document
-      .querySelectorAll(".timer")
-      .forEach((timer) => timer.classList.toggle("timer-rotate"));
-    document
       .querySelectorAll(".chess-piece")
       .forEach((piece) => piece.classList.toggle("rotate"));
     document
       .querySelectorAll(".square--coords")
       .forEach((square) => square.classList.toggle("square--coords-hidden"));
+    document.querySelectorAll(".player--card").forEach((card) => {
+      card.classList.toggle("player--card-top");
+      card.classList.toggle("player--card-bottom");
+    });
   }
   private restartGame() {
     if (this.isBoardRotated) this.rotateBoard();
@@ -1037,6 +1056,7 @@ class GameBoard {
     this.createChessPieces();
     this.addChessHandlers();
     this.removeLastMoveHighlight();
+    this.resetCapturedPieces();
   }
   private addChessHandlers(): void {
     document.querySelectorAll(".chess-piece").forEach((piece) => {
@@ -1144,9 +1164,7 @@ class GameBoard {
   }
 }
 
-(function () {
-  new GameBoard();
-})();
+const game = new GameBoard();
 
 function isLowerCase(charCode: number) {
   return charCode >= 97 && charCode <= 122;

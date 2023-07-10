@@ -1,0 +1,28 @@
+.gameBoard {
+  height: 80rem;
+  width: 80rem;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+.row {
+  display: flex;
+}
+.square {
+  width: 10rem;
+  height: 10rem;
+  display: grid;
+  background-color: rgb(247, 211, 211);
+  place-content: center;
+  position: relative;
+}
+.square--off-color {
+  background-color: rgb(165, 124, 124);
+}
+.highlight-border {
+  border: 0.4rem rgba(255, 255, 255, 0.767) solid;
+}
+.previous-move-highlight,
+.highlight-box {
+  background-color: rgba(227, 252, 196, 0.658);
+}

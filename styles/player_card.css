@@ -1,0 +1,32 @@
+.player--card {
+  width: 80rem;
+  height: 5rem;
+}
+.player--card-top {
+  order: -1;
+}
+.player--card-bottom {
+  order: 3;
+}
+.player--card {
+  background-color: antiquewhite;
+  display: grid;
+  grid-template-columns: 5rem 1fr 0fr;
+  grid-template-rows: 5rem;
+}
+.player--card-image {
+  height: 100%;
+}
+.player--card-timer {
+  background-color: grey;
+  padding: 0.4rem;
+  font-size: 2.4rem;
+  pointer-events: none;
+  user-select: none;
+  justify-self: center;
+  align-self: center;
+  width: 10rem;
+}
+.player--card-content {
+  flex-basis: 100%;
+}

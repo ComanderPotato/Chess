@@ -1,0 +1,202 @@
+.captured--pieces {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+  top: 20px;
+}
+.captured--piece {
+  background-image: url("../assets/images/captured-pieces.png");
+  background-size: 68.3rem 61.1rem;
+  background-repeat: no-repeat;
+}
+
+.captured--pieces-b-0-bishops,
+.captured--pieces-w-0-bishops {
+  display: none;
+}
+.captured--pieces-b-1-pawns,
+.captured--pieces-w-1-pawns {
+  height: 1.6rem;
+  width: 1.3rem;
+}
+.captured--pieces-b-2-pawns,
+.captured--pieces-w-2-pawns {
+  height: 1.6rem;
+  width: 2rem;
+}
+.captured--pieces-b-3-pawns,
+.captured--pieces-w-3-pawns {
+  height: 1.6rem;
+  width: 2.7rem;
+}
+.captured--pieces-b-4-pawns,
+.captured--pieces-w-4-pawns {
+  height: 1.6rem;
+  width: 3.4rem;
+}
+.captured--pieces-b-5-pawns,
+.captured--pieces-w-5-pawns {
+  height: 1.6rem;
+  width: 4.1rem;
+}
+.captured--pieces-b-6-pawns,
+.captured--pieces-w-6-pawns {
+  height: 1.6rem;
+  width: 4.8rem;
+}
+.captured--pieces-b-7-pawns,
+.captured--pieces-w-7-pawns {
+  height: 1.6rem;
+  width: 5.5rem;
+}
+.captured--pieces-b-8-pawns,
+.captured--pieces-w-8-pawns {
+  height: 1.6rem;
+  width: 6.2rem;
+}
+.captured--pieces-b-0-bishops,
+.captured--pieces-w-0-bishops {
+  display: none;
+}
+.captured--pieces-b-1-bishops,
+.captured--pieces-w-1-bishops {
+  height: 1.8rem;
+  width: 1.5rem;
+}
+.captured--pieces-b-2-bishops,
+.captured--pieces-w-2-bishops {
+  height: 1.9rem;
+  width: 2.3rem;
+}
+.captured--pieces-b-0-knight,
+.captured--pieces-w-0-knight {
+  display: none;
+}
+.captured--pieces-b-1-knight,
+.captured--pieces-w-1-knight {
+  height: 1.9rem;
+  width: 1.6rem;
+}
+.captured--pieces-b-2-knight,
+.captured--pieces-w-2-knight {
+  height: 1.9rem;
+  width: 2.3rem;
+}
+.captured--pieces-b-0-rook,
+.captured--pieces-w-0-rook {
+  display: none;
+}
+.captured--pieces-b-1-rook,
+.captured--pieces-w-1-rook {
+  height: 1.7rem;
+  width: 1.6rem;
+}
+.captured--pieces-b-2-rook,
+.captured--pieces-w-2-rook {
+  height: 1.7rem;
+  width: 2.3rem;
+}
+.captured--pieces-b-0-queen,
+.captured--pieces-w-0-queen {
+  display: none;
+}
+.captured--pieces-b-1-queen,
+.captured--pieces-w-1-queen {
+  height: 1.8rem;
+  width: 2rem;
+}
+.captured--pieces-b-1-pawns {
+  background-position: -0rem -59.5rem;
+}
+.captured--pieces-b-2-pawns {
+  background-position: -0rem -57rem;
+}
+.captured--pieces-b-3-pawns {
+  background-position: -0rem -54.5rem;
+}
+.captured--pieces-b-4-pawns {
+  background-position: -0rem -52rem;
+}
+.captured--pieces-b-5-pawns {
+  background-position: -0rem -49.5rem;
+}
+.captured--pieces-b-6-pawns {
+  background-position: -0rem -47rem;
+}
+.captured--pieces-b-7-pawns {
+  background-position: -0rem -44.5rem;
+}
+.captured--pieces-b-8-pawns {
+  background-position: -0rem -42rem;
+}
+.captured--pieces-b-1-bishops {
+  background-position: -6.8rem -44.2rem;
+}
+.captured--pieces-b-2-bishops {
+  background-position: -6.8rem -41.7rem;
+}
+
+.captured--pieces-b-1-knight {
+  background-position: -9.5rem -44.2rem;
+}
+.captured--pieces-b-2-knight {
+  background-position: -9.5rem -41.7rem;
+}
+
+.captured--pieces-b-1-rook {
+  background-position: -12rem -44.4rem;
+}
+.captured--pieces-b-2-rook {
+  background-position: -12rem -41.9rem;
+}
+.captured--pieces-b-1-queen {
+  background-position: -14.2rem -41.7rem;
+}
+
+.captured--pieces-w-1-pawns {
+  background-position: -36rem -59.5rem;
+}
+.captured--pieces-w-2-pawns {
+  background-position: -36rem -57rem;
+}
+.captured--pieces-w-3-pawns {
+  background-position: -36rem -54.5rem;
+}
+.captured--pieces-w-4-pawns {
+  background-position: -36rem -52rem;
+}
+.captured--pieces-w-5-pawns {
+  background-position: -36rem -49.5rem;
+}
+.captured--pieces-w-6-pawns {
+  background-position: -36rem -47rem;
+}
+.captured--pieces-w-7-pawns {
+  background-position: -36rem -44.5rem;
+}
+.captured--pieces-w-8-pawns {
+  background-position: -36rem -42rem;
+}
+.captured--pieces-w-1-bishops {
+  background-position: -42.8rem -44.2rem;
+}
+.captured--pieces-w-2-bishops {
+  background-position: -42.8rem -41.7rem;
+}
+
+.captured--pieces-w-1-knight {
+  background-position: -45.5rem -44.2rem;
+}
+.captured--pieces-w-2-knight {
+  background-position: -45.5rem -41.7rem;
+}
+
+.captured--pieces-w-1-rook {
+  background-position: -48rem -44.4rem;
+}
+.captured--pieces-w-2-rook {
+  background-position: -48rem -41.9rem;
+}
+.captured--pieces-w-1-queen {
+  background-position: -50.2rem -41.7rem;
+}

@@ -184,6 +184,7 @@ class GameBoard {
     }
     removePiece(piece) {
         // this.getPieces().delete(piece.getCoords())
+        this.changeCount(piece);
         document.querySelector(`.chess-piece[data-x="${piece.getX()}"][data-y="${piece.getY()}"]`).remove();
         this.board[piece.getX()][piece.getY()] = 0;
         piece.getIsWhite()
@@ -394,13 +395,9 @@ class GameBoard {
             e.target instanceof HTMLImageElement) ||
             !this.selectedPiece ||
             !this.selectedElement ||
-            !e.target
-        // ||
-        // !(
-        //   (this.whitePlayersTurn && this.selectedPiece.getIsWhite()) ||
-        //   (!this.whitePlayersTurn && !this.selectedPiece.getIsWhite())
-        // )
-        ) {
+            !e.target ||
+            !((this.whitePlayersTurn && this.selectedPiece.getIsWhite()) ||
+                (!this.whitePlayersTurn && !this.selectedPiece.getIsWhite()))) {
             return;
         }
         const newPositionX = Number(e.target.dataset.x);
@@ -789,6 +786,30 @@ class GameBoard {
             }
         }
     }
+    resetCapturedPieces() {
+        document.querySelectorAll(".captured--pieces").forEach((el) => {
+            el.childNodes.forEach((child) => {
+                if (child instanceof HTMLSpanElement) {
+                }
+                console.log(child);
+            });
+        });
+    }
+    changeCount(piece) {
+        const capturedPiecesEl = document.getElementById(`captured--${piece.getID()}-${piece.getIsWhite() ? "w" : "b"}`);
+        const oldClassName = capturedPiecesEl.classList[capturedPiecesEl.classList.length - 1];
+        let capturedPieceCount = Number(oldClassName.charAt(19));
+        if ((piece instanceof Pawn && capturedPieceCount < 8) ||
+            (piece instanceof Queen && capturedPieceCount < 1) ||
+            ((piece instanceof Rook ||
+                piece instanceof Bishop ||
+                piece instanceof Knight) &&
+                capturedPieceCount < 2)) {
+            capturedPiecesEl.classList.remove(oldClassName);
+            const newClassName = oldClassName.replace(oldClassName.charAt(19), String(capturedPieceCount + 1));
+            capturedPiecesEl.classList.add(newClassName);
+        }
+    }
     // const square = document.querySelector(
     //   `.square[data-x="${x}"][data-y="${y}"]`
     // ) as HTMLDivElement;
@@ -825,14 +846,15 @@ class GameBoard {
         this.isBoardRotated = !this.isBoardRotated;
         document.querySelector(".gameBoard").classList.toggle("rotate");
         document
-            .querySelectorAll(".timer")
-            .forEach((timer) => timer.classList.toggle("timer-rotate"));
-        document
             .querySelectorAll(".chess-piece")
             .forEach((piece) => piece.classList.toggle("rotate"));
         document
             .querySelectorAll(".square--coords")
             .forEach((square) => square.classList.toggle("square--coords-hidden"));
+        document.querySelectorAll(".player--card").forEach((card) => {
+            card.classList.toggle("player--card-top");
+            card.classList.toggle("player--card-bottom");
+        });
     }
     restartGame() {
         if (this.isBoardRotated)
@@ -845,6 +867,7 @@ class GameBoard {
         this.createChessPieces();
         this.addChessHandlers();
         this.removeLastMoveHighlight();
+        this.resetCapturedPieces();
     }
     addChessHandlers() {
         document.querySelectorAll(".chess-piece").forEach((piece) => {
@@ -959,9 +982,7 @@ class GameBoard {
         }
     }
 }
-(function () {
-    new GameBoard();
-})();
+const game = new GameBoard();
 function isLowerCase(charCode) {
     return charCode >= 97 && charCode <= 122;
 }

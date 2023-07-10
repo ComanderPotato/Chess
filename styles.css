@@ -4,28 +4,6 @@
   box-sizing: border-box;
   font-family: sans-serif;
 }
-.gameBoard {
-  height: 800px;
-  width: 800px;
-  margin: 0;
-  padding: 0;
-  position: relative;
-}
-.row {
-  display: flex;
-}
-.square {
-  width: 100px;
-  height: 100px;
-  display: grid;
-  background-color: rgb(247, 211, 211);
-  place-content: center;
-  position: relative;
-}
-.square--off-color {
-  background-color: rgb(165, 124, 124);
-}
-
 .chess-piece {
   width: 100%;
   cursor: move;
@@ -33,7 +11,6 @@
   cursor: -moz-grab;
   cursor: -webkit-grab;
   position: relative;
-  /* z-index: 3; */
 }
 .chess-piece:active {
   cursor: grabbing;
@@ -41,13 +18,6 @@
 .availableMoves {
   background-color: black;
   opacity: 0.5;
-}
-.highlight-border {
-  border: 4px rgba(255, 255, 255, 0.767) solid;
-}
-.previous-move-highlight,
-.highlight-box {
-  background-color: rgba(227, 252, 196, 0.658);
 }
 .hint {
   position: absolute;
@@ -61,8 +31,8 @@
   pointer-events: none;
 }
 .hint--small {
-  width: 30px;
-  height: 30px;
+  width: 3rem;
+  height: 3rem;
   background-color: rgba(0, 0, 0, 0.144);
   display: block;
 }
@@ -84,7 +54,7 @@
 .modal {
   display: flex;
   flex-direction: column;
-  width: 100px;
+  width: 10rem;
   position: absolute;
   background-color: rgb(241, 236, 236);
   cursor: pointer;
@@ -100,27 +70,27 @@
   display: flex;
 }
 
-.timer {
+/* .timer {
   position: absolute;
-  right: -80px;
-  font-size: 24px;
+  right: -8rem;
+  font-size: 2.4rem;
   pointer-events: none;
   user-select: none;
 }
 .timer-rotate {
-  left: -80px;
+  left: -8rem;
   right: initial;
   transform: rotate(180deg);
 }
 .timer-white {
   bottom: 0;
-}
+} */
 .square--coords {
   color: rgb(247, 211, 211);
-  font-size: 24px;
+  font-size: 2.4rem;
   font-weight: bold;
   position: absolute;
-  padding: 5px;
+  padding: 0.5rem;
   pointer-events: none;
   user-select: none;
 }
@@ -147,19 +117,7 @@
 .square--coords-hidden {
   display: none;
 }
-
 .board {
   display: flex;
   flex-direction: column;
-}
-.player--card {
-  /* background-color: blue; */
-  width: 800px;
-  height: 50px;
-}
-.player--card-top {
-  order: 0;
-}
-.player--card-bottom {
-  order: 3;
 }
