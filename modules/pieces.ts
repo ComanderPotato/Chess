@@ -1,5 +1,18 @@
 import Player from "./Player.js";
 type id = "king" | "rook" | "pawn" | "queen" | "knight" | "bishop";
+type unicodeFigurine =
+  | "&#9812"
+  | "&#9813"
+  | "&#9814"
+  | "&#9815"
+  | "&#9816"
+  | "&#9817"
+  | "&#9818"
+  | "&#9819"
+  | "&#9820"
+  | "&#9821"
+  | "&#9822"
+  | "&#9823";
 type Type = "incremental" | "positional";
 export class Piece {
   private x: number;
@@ -8,9 +21,11 @@ export class Piece {
   private isWhite: boolean;
   private id: id;
   private legalMoves: [number, number][];
-  private type: Type;
+  private readonly type: Type;
+  private readonly figuirineCode: unicodeFigurine;
   private availableMoves: [number, number][];
   private coords: string;
+  private readonly value: number;
   constructor(
     x: number,
     y: number,
@@ -19,6 +34,8 @@ export class Piece {
     legalMoves: [number, number][],
     image: string,
     coords: string,
+    value: number,
+    figurineCode: unicodeFigurine,
     type: Type
   ) {
     this.x = x;
@@ -27,8 +44,11 @@ export class Piece {
     this.id = id;
     this.legalMoves = legalMoves;
     this.image = image;
-    this.type = type;
     this.coords = coords;
+    this.value = value;
+    this.type = type;
+    this.figuirineCode = figurineCode;
+
     this.availableMoves = [];
   }
   public isSameColor(targetPiece: Piece) {
@@ -80,6 +100,12 @@ export class Piece {
   }
   public getType(): string {
     return this.type;
+  }
+  public getValue(): number {
+    return this.value;
+  }
+  public getFigurine(): string {
+    return this.figuirineCode;
   }
   public setLegalMoves(newLegalMoves: [number, number][]): void {
     this.legalMoves = newLegalMoves;
@@ -218,9 +244,22 @@ export class positionalPiece extends Piece {
     id: id,
     legalMoves: [number, number][],
     image: string,
-    coords: string
+    coords: string,
+    value: number,
+    figurineCode: unicodeFigurine
   ) {
-    super(x, y, isWhite, id, legalMoves, image, coords, "positional");
+    super(
+      x,
+      y,
+      isWhite,
+      id,
+      legalMoves,
+      image,
+      coords,
+      value,
+      figurineCode,
+      "positional"
+    );
   }
 }
 export class incrementalPiece extends Piece {
@@ -231,9 +270,22 @@ export class incrementalPiece extends Piece {
     id: id,
     legalMoves: [number, number][],
     image: string,
-    coords: string
+    coords: string,
+    value: number,
+    figurineCode: unicodeFigurine
   ) {
-    super(x, y, isWhite, id, legalMoves, image, coords, "incremental");
+    super(
+      x,
+      y,
+      isWhite,
+      id,
+      legalMoves,
+      image,
+      coords,
+      value,
+      figurineCode,
+      "incremental"
+    );
   }
 }
 
@@ -258,7 +310,8 @@ export class Pawn extends incrementalPiece {
             [2, 0],
           ],
         ];
-    super(x, y, isWhite, id, legalMoves, image, coords);
+    const figurineCode: unicodeFigurine = isWhite ? "&#9817" : "&#9823";
+    super(x, y, isWhite, id, legalMoves, image, coords, 1, figurineCode);
     this.legalAttackMoves = isWhite
       ? [
           [-1, 1],
@@ -312,6 +365,7 @@ export class Queen extends incrementalPiece {
     const image: string = isWhite
       ? "../assets/images/wq.png"
       : "../assets/images/bq.png";
+    const figurineCode: unicodeFigurine = isWhite ? "&#9813" : "&#9819";
 
     const legalMoves: [number, number][] = [
       [1, 1],
@@ -323,7 +377,7 @@ export class Queen extends incrementalPiece {
       [-1, 0],
       [-1, 1],
     ];
-    super(x, y, isWhite, id, legalMoves, image, coords);
+    super(x, y, isWhite, id, legalMoves, image, coords, 9, figurineCode);
   }
 }
 export class King extends positionalPiece {
@@ -332,7 +386,7 @@ export class King extends positionalPiece {
     const image: string = isWhite
       ? "../assets/images/wk.png"
       : "../assets/images/bk.png";
-
+    const figurineCode: unicodeFigurine = isWhite ? "&#9812" : "&#9818";
     const legalMoves: [number, number][] = [
       [0, 1],
       [0, -1],
@@ -343,7 +397,7 @@ export class King extends positionalPiece {
       [-1, -1],
       [-1, 1],
     ];
-    super(x, y, isWhite, id, legalMoves, image, coords);
+    super(x, y, isWhite, id, legalMoves, image, coords, 4, figurineCode);
     this.hadFirstMove = false;
   }
   public getHadFirstMove(): boolean {
@@ -399,6 +453,7 @@ export class Rook extends incrementalPiece {
     const image: string = isWhite
       ? "../assets/images/wr.png"
       : "../assets/images/br.png";
+    const figurineCode: unicodeFigurine = isWhite ? "&#9814" : "&#9820";
 
     const legalMoves: [number, number][] = [
       [0, 1],
@@ -406,7 +461,7 @@ export class Rook extends incrementalPiece {
       [1, 0],
       [-1, 0],
     ];
-    super(x, y, isWhite, id, legalMoves, image, coords);
+    super(x, y, isWhite, id, legalMoves, image, coords, 5, figurineCode);
     this.hadFirstMove = false;
   }
   public getHadFirstMove(): boolean {
@@ -422,6 +477,7 @@ export class Bishop extends incrementalPiece {
     const image: string = isWhite
       ? "../assets/images/wb.png"
       : "../assets/images/bb.png";
+    const figurineCode: unicodeFigurine = isWhite ? "&#9815" : "&#9821";
 
     const legalMoves: [number, number][] = [
       [1, 1],
@@ -429,7 +485,7 @@ export class Bishop extends incrementalPiece {
       [-1, -1],
       [-1, 1],
     ];
-    super(x, y, isWhite, id, legalMoves, image, coords);
+    super(x, y, isWhite, id, legalMoves, image, coords, 3, figurineCode);
   }
 }
 export class Knight extends positionalPiece {
@@ -437,6 +493,7 @@ export class Knight extends positionalPiece {
     const image: string = isWhite
       ? "../assets/images/wn.png"
       : "../assets/images/bn.png";
+    const figurineCode: unicodeFigurine = isWhite ? "&#9816" : "&#9822";
 
     const legalMoves: [number, number][] = [
       [2, 1],
@@ -448,6 +505,6 @@ export class Knight extends positionalPiece {
       [-1, 2],
       [-1, -2],
     ];
-    super(x, y, isWhite, id, legalMoves, image, coords);
+    super(x, y, isWhite, id, legalMoves, image, coords, 3, figurineCode);
   }
 }

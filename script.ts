@@ -19,6 +19,7 @@ interface Coords {
 interface BoardState {
   board: (number | Piece)[][];
   moveSound: HTMLAudioElement;
+  notation: string;
 }
 class GameBoard {
   private whitePlayer: Player;
@@ -46,12 +47,20 @@ class GameBoard {
   private readonly castleAudio: HTMLAudioElement = new Audio(
     "./assets/audio/castle.mp3"
   );
+  private readonly promoteAudio: HTMLAudioElement = new Audio(
+    "./assets/audio/promote.mp3"
+  );
   // private currentMoveSound: HTMLAudioElement | null;
   constructor() {
+    this.placeAudio.dataset.notation = "";
+    this.captureAudio.dataset.notation = "x";
+    this.checkedAudio.dataset.notation = "+";
+    this.castleAudio.dataset.notationKingSide = "0-0";
+    this.castleAudio.dataset.notationQueenSide = "0-0-0";
+    this.promoteAudio.dataset.notation = "=";
     this.initializeVariables();
     this.createGame();
   }
-
   private initializeVariables(): void {
     this.board = this.createEmptyBoard();
     this.whitePlayer = new Player(true, [7, 4]);
@@ -232,8 +241,8 @@ class GameBoard {
     const boardSquare = document.querySelector(
       `.square[data-x="${pawnX}"][data-y="${pawnY}"]`
     ) as HTMLDivElement;
-
-    this.removePiece(pawnToPromote);
+    this.promoteAudio.play();
+    this.removePiece(pawnToPromote, false);
     this.createChessElement(boardSquare, piece, true);
     this.addPiece(piece);
     this.closePromotePawnModal();
@@ -241,6 +250,7 @@ class GameBoard {
     if (this.isChecked()) {
       this.checkedAudio.play();
     }
+    console.log(this.whitePlayer.getAvailablePieces());
   }
   private updateTimer() {
     if (this.whitePlayersTurn) {
@@ -251,9 +261,10 @@ class GameBoard {
       this.blackPlayer.getPlayersTimer().startTimer();
     }
   }
-  private removePiece(piece: Piece): void {
-    // this.getPieces().delete(piece.getCoords())
-    this.changeCount(piece);
+  private removePiece(piece: Piece, changeCount: boolean = true): void {
+    if (changeCount) {
+      this.changeCount(piece);
+    }
     (
       document.querySelector(
         `.chess-piece[data-x="${piece.getX()}"][data-y="${piece.getY()}"]`
@@ -528,15 +539,20 @@ class GameBoard {
       } else {
         this.whitePlayer.setIsChecked(false);
         this.blackPlayer.setIsChecked(false);
-
-        this.movePieceOnBoard(
+        const audio = this.movePieceOnBoard(
           oldPositionX,
           oldPositionY,
           newPositionX,
           newPositionY
-        ).play();
+        );
+        audio.play();
+        console.log(
+          `${this.selectedPiece.getID()}${audio.dataset.notation}${getCoords(
+            newPositionX,
+            newPositionY
+          )}`
+        );
       }
-
       this.addLastMoveHighlight(oldPositionX, oldPositionY);
       this.clearSquare();
       this.updateTimer();
@@ -547,7 +563,6 @@ class GameBoard {
     // Use something like this for dragged element
     // document.querySelector(".boobs")?.remove();
   }
-
   private castleKing(rookPiece: Rook): void {
     if (!this.selectedPiece) return;
     const rookX = rookPiece.getX();
@@ -610,9 +625,6 @@ class GameBoard {
       `.square[data-x="${newPositionX}"][data-y="${newPositionY}"]`
     ) as HTMLDivElement;
     newSquare.insertAdjacentElement("beforeend", pieceElement);
-    // if (boardSquare instanceof King) {
-    //   this.updateKingPosition(boardSquare);
-    // }
     if (
       boardSquare instanceof King ||
       boardSquare instanceof Rook ||
@@ -622,7 +634,6 @@ class GameBoard {
         if (boardSquare.isPromotable()) {
           this.openPromotePawnModal(newPositionX, newPositionY);
         } else if (!boardSquare.getHadFirstMove()) {
-          // const pawnDistance = Math.abs(oldPositionX - newPositionX);
           if (Math.abs(oldPositionX - newPositionX) === 2) {
             boardSquare.setCanEnPassant(true);
           }
@@ -737,6 +748,7 @@ class GameBoard {
   private getPieces() {
     return this.totalPieces;
   }
+
   private updatePiece(piece: Piece): void {
     const oldCoords = piece.getCoords();
     this.getPieces().delete(piece.getCoords());
@@ -969,12 +981,26 @@ class GameBoard {
   private resetCapturedPieces() {
     document.querySelectorAll(".captured--pieces").forEach((el) => {
       el.childNodes.forEach((child) => {
-        if (child instanceof HTMLSpanElement) {
+        if (child instanceof HTMLSpanElement && child.classList.length > 1) {
+          const oldClassName = child.classList[child.classList.length - 1];
+          const newClassName = oldClassName.replace(
+            oldClassName.charAt(19),
+            "0"
+          );
+          child.classList.remove(oldClassName);
+          child.classList.add(newClassName);
+        } else if (child instanceof HTMLSpanElement) {
+          child.dataset.value = "";
+          child.textContent = "";
         }
-        console.log(child);
       });
     });
   }
+  // private resetPlayerCaptures(): void {
+  //   document.querySelectorAll(".captured-pieces").forEach(element => {
+  //     element.childNodes.forEach
+  //   });
+  // }
   private changeCount(piece: Piece) {
     const capturedPiecesEl = document.getElementById(
       `captured--${piece.getID()}-${piece.getIsWhite() ? "w" : "b"}`
@@ -996,6 +1022,41 @@ class GameBoard {
         String(capturedPieceCount + 1)
       );
       capturedPiecesEl.classList.add(newClassName);
+    }
+    this.updateCardValue(piece);
+  }
+  private updateCardValue(piece: Piece): void {
+    const playerValueEl = document.querySelector(
+      `.player--card-points-${piece.getIsWhite() ? "w" : "b"}`
+    ) as HTMLSpanElement;
+    const enemyPlayerValueEl = document.querySelector(
+      `.player--card-points-${!piece.getIsWhite() ? "w" : "b"}`
+    ) as HTMLSpanElement;
+    playerValueEl.dataset.value = String(
+      Number(playerValueEl.dataset.value!) + Number(piece.getValue())
+    );
+    if (
+      Number(playerValueEl.dataset.value!) >
+      Number(enemyPlayerValueEl.dataset.value!)
+    ) {
+      playerValueEl.textContent = `${
+        Number(playerValueEl.dataset.value!) -
+        Number(enemyPlayerValueEl.dataset.value!)
+      }+`;
+
+      enemyPlayerValueEl.textContent = "";
+    } else if (
+      Number(playerValueEl.dataset.value!) <
+      Number(enemyPlayerValueEl.dataset.value!)
+    ) {
+      enemyPlayerValueEl.textContent = `${
+        Number(enemyPlayerValueEl.dataset.value!) -
+        Number(playerValueEl.dataset.value!)
+      }+`;
+      playerValueEl.textContent = "";
+    } else {
+      playerValueEl.textContent = "";
+      enemyPlayerValueEl.textContent = "";
     }
   }
   // const square = document.querySelector(
@@ -1116,7 +1177,8 @@ class GameBoard {
         (whiteArmySize === 1 && blackArmySize === 16)
       ) {
         winner!.textContent = "Insufficient material";
-      } else if (whiteArmySize <= 3 || blackArmySize <= 3) {
+      } else {
+        // else if (whiteArmySize <= 3 || blackArmySize <= 3) {
         /*
       King vs king
       King + minor (bishop or knight) piece vs king
@@ -1124,6 +1186,7 @@ class GameBoard {
       King + two knights vs king
       King + minor piece vs king + minor piece
       */
+
         let whiteBishopCount = 0;
         let blackBishopCount = 0;
         let whiteKnightCount = 0;
@@ -1142,30 +1205,49 @@ class GameBoard {
         }
         const whiteMinorCount = whiteBishopCount + whiteKnightCount;
         const blackMinorCount = blackBishopCount + blackKnightCount;
-        if (
+        const kingPlusMinorVsKing: boolean =
           (whiteMinorCount === 1 && blackMinorCount === 0) ||
-          (whiteMinorCount === 0 && blackMinorCount === 1)
-        ) {
-          winner!.textContent = "Insufficient material";
-        } else if (
+          (whiteMinorCount === 0 && blackMinorCount === 1);
+        const kingPlusTwoKnightsVsKing: boolean =
           (whiteKnightCount === 2 &&
             whiteBishopCount === 0 &&
             blackMinorCount === 0) ||
           (blackKnightCount === 2 &&
             blackBishopCount === 0 &&
-            whiteMinorCount === 0)
+            whiteMinorCount === 0);
+        const oneMinorPieceEach: boolean =
+          whiteMinorCount === 1 && blackMinorCount === 1;
+        if (
+          kingPlusMinorVsKing ||
+          kingPlusTwoKnightsVsKing ||
+          oneMinorPieceEach
         ) {
           winner!.textContent = "Insufficient material";
-        } else if (whiteMinorCount === 1 && blackMinorCount === 1) {
-          winner!.textContent = "Insufficient material";
         }
+        //   if (
+        //     (whiteMinorCount === 1 && blackMinorCount === 0) ||
+        //     (whiteMinorCount === 0 && blackMinorCount === 1)
+        //   ) {
+        //     winner!.textContent = "Insufficient material";
+        //   } else if (
+        //     (whiteKnightCount === 2 &&
+        //       whiteBishopCount === 0 &&
+        //       blackMinorCount === 0) ||
+        //     (blackKnightCount === 2 &&
+        //       blackBishopCount === 0 &&
+        //       whiteMinorCount === 0)
+        //   ) {
+        //     winner!.textContent = "Insufficient material";
+        //   } else if (whiteMinorCount === 1 && blackMinorCount === 1) {
+        //     winner!.textContent = "Insufficient material";
+        //   }
       }
     }
   }
 }
 
 const game = new GameBoard();
-
+console.log(game);
 function isLowerCase(charCode: number) {
   return charCode >= 97 && charCode <= 122;
 }

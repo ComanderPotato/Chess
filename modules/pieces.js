@@ -1,5 +1,5 @@
 export class Piece {
-    constructor(x, y, isWhite, id, legalMoves, image, coords, type) {
+    constructor(x, y, isWhite, id, legalMoves, image, coords, value, figurineCode, type) {
         this.isValid = (posX, posY) => {
             return posX >= 0 && posX < 8 && posY >= 0 && posY < 8;
         };
@@ -9,8 +9,10 @@ export class Piece {
         this.id = id;
         this.legalMoves = legalMoves;
         this.image = image;
-        this.type = type;
         this.coords = coords;
+        this.value = value;
+        this.type = type;
+        this.figuirineCode = figurineCode;
         this.availableMoves = [];
     }
     isSameColor(targetPiece) {
@@ -59,6 +61,12 @@ export class Piece {
     }
     getType() {
         return this.type;
+    }
+    getValue() {
+        return this.value;
+    }
+    getFigurine() {
+        return this.figuirineCode;
     }
     setLegalMoves(newLegalMoves) {
         this.legalMoves = newLegalMoves;
@@ -179,13 +187,13 @@ export class Piece {
     }
 }
 export class positionalPiece extends Piece {
-    constructor(x, y, isWhite, id, legalMoves, image, coords) {
-        super(x, y, isWhite, id, legalMoves, image, coords, "positional");
+    constructor(x, y, isWhite, id, legalMoves, image, coords, value, figurineCode) {
+        super(x, y, isWhite, id, legalMoves, image, coords, value, figurineCode, "positional");
     }
 }
 export class incrementalPiece extends Piece {
-    constructor(x, y, isWhite, id, legalMoves, image, coords) {
-        super(x, y, isWhite, id, legalMoves, image, coords, "incremental");
+    constructor(x, y, isWhite, id, legalMoves, image, coords, value, figurineCode) {
+        super(x, y, isWhite, id, legalMoves, image, coords, value, figurineCode, "incremental");
     }
 }
 export class Pawn extends incrementalPiece {
@@ -205,7 +213,8 @@ export class Pawn extends incrementalPiece {
                     [2, 0],
                 ],
             ];
-        super(x, y, isWhite, id, legalMoves, image, coords);
+        const figurineCode = isWhite ? "&#9817" : "&#9823";
+        super(x, y, isWhite, id, legalMoves, image, coords, 1, figurineCode);
         this.legalAttackMoves = isWhite
             ? [
                 [-1, 1],
@@ -256,6 +265,7 @@ export class Queen extends incrementalPiece {
         const image = isWhite
             ? "../assets/images/wq.png"
             : "../assets/images/bq.png";
+        const figurineCode = isWhite ? "&#9813" : "&#9819";
         const legalMoves = [
             [1, 1],
             [1, 0],
@@ -266,7 +276,7 @@ export class Queen extends incrementalPiece {
             [-1, 0],
             [-1, 1],
         ];
-        super(x, y, isWhite, id, legalMoves, image, coords);
+        super(x, y, isWhite, id, legalMoves, image, coords, 9, figurineCode);
     }
 }
 export class King extends positionalPiece {
@@ -274,6 +284,7 @@ export class King extends positionalPiece {
         const image = isWhite
             ? "../assets/images/wk.png"
             : "../assets/images/bk.png";
+        const figurineCode = isWhite ? "&#9812" : "&#9818";
         const legalMoves = [
             [0, 1],
             [0, -1],
@@ -284,7 +295,7 @@ export class King extends positionalPiece {
             [-1, -1],
             [-1, 1],
         ];
-        super(x, y, isWhite, id, legalMoves, image, coords);
+        super(x, y, isWhite, id, legalMoves, image, coords, 4, figurineCode);
         this.hadFirstMove = false;
     }
     getHadFirstMove() {
@@ -336,13 +347,14 @@ export class Rook extends incrementalPiece {
         const image = isWhite
             ? "../assets/images/wr.png"
             : "../assets/images/br.png";
+        const figurineCode = isWhite ? "&#9814" : "&#9820";
         const legalMoves = [
             [0, 1],
             [0, -1],
             [1, 0],
             [-1, 0],
         ];
-        super(x, y, isWhite, id, legalMoves, image, coords);
+        super(x, y, isWhite, id, legalMoves, image, coords, 5, figurineCode);
         this.hadFirstMove = false;
     }
     getHadFirstMove() {
@@ -358,13 +370,14 @@ export class Bishop extends incrementalPiece {
         const image = isWhite
             ? "../assets/images/wb.png"
             : "../assets/images/bb.png";
+        const figurineCode = isWhite ? "&#9815" : "&#9821";
         const legalMoves = [
             [1, 1],
             [1, -1],
             [-1, -1],
             [-1, 1],
         ];
-        super(x, y, isWhite, id, legalMoves, image, coords);
+        super(x, y, isWhite, id, legalMoves, image, coords, 3, figurineCode);
     }
 }
 export class Knight extends positionalPiece {
@@ -372,6 +385,7 @@ export class Knight extends positionalPiece {
         const image = isWhite
             ? "../assets/images/wn.png"
             : "../assets/images/bn.png";
+        const figurineCode = isWhite ? "&#9816" : "&#9822";
         const legalMoves = [
             [2, 1],
             [2, -1],
@@ -382,6 +396,6 @@ export class Knight extends positionalPiece {
             [-1, 2],
             [-1, -2],
         ];
-        super(x, y, isWhite, id, legalMoves, image, coords);
+        super(x, y, isWhite, id, legalMoves, image, coords, 3, figurineCode);
     }
 }
