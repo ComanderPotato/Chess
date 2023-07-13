@@ -18,7 +18,7 @@ export default class Player {
     }
     updatePiece(piece, oldCoords) {
         this.availablePieces.delete(oldCoords);
-        const newCoords = getCoords(piece.getX(), piece.getY());
+        const newCoords = getCoords(piece.getRank(), piece.getFile());
         this.availablePieces.set(newCoords, piece);
         this.availableMoves += piece.getAvailableMoves().length;
     }

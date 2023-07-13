@@ -2,21 +2,60 @@ import { Piece, Pawn, King, Knight, Rook, Bishop, Queen, } from "./modules/piece
 import Player from "./modules/Player.js";
 import getCoords, { getXAxis, getYAxis } from "./modules/Utils/Coordinates.js";
 class GameBoard {
+    // private readonly placeAudio: HTMLAudioElement = new Audio(
+    //   "./assets/audio/move-self.mp3"
+    // );
+    // private readonly captureAudio: HTMLAudioElement = new Audio(
+    //   "./assets/audio/capture.mp3"
+    // );
+    // private readonly checkedAudio: HTMLAudioElement = new Audio(
+    //   "./assets/audio/move-check.mp3"
+    // );
+    // private readonly castleAudio: HTMLAudioElement = new Audio(
+    //   "./assets/audio/castle.mp3"
+    // );
+    // private readonly promoteAudio: HTMLAudioElement = new Audio(
+    //   "./assets/audio/promote.mp3"
+    // );
     // private currentMoveSound: HTMLAudioElement | null;
     constructor() {
         this.BOARD_COLS = 8;
         this.BOARD_ROWS = 8;
-        this.placeAudio = new Audio("./assets/audio/move-self.mp3");
-        this.captureAudio = new Audio("./assets/audio/capture.mp3");
-        this.checkedAudio = new Audio("./assets/audio/move-check.mp3");
-        this.castleAudio = new Audio("./assets/audio/castle.mp3");
-        this.promoteAudio = new Audio("./assets/audio/promote.mp3");
-        this.placeAudio.dataset.notation = "";
-        this.captureAudio.dataset.notation = "x";
-        this.checkedAudio.dataset.notation = "+";
-        this.castleAudio.dataset.notationKingSide = "0-0";
-        this.castleAudio.dataset.notationQueenSide = "0-0-0";
-        this.promoteAudio.dataset.notation = "=";
+        this.isPromoting = false;
+        this.placeAudio = {
+            moveType: "place",
+            sound: new Audio("./assets/audio/move-self.mp3"),
+            notation: "",
+        };
+        this.captureAudio = {
+            moveType: "capture",
+            sound: new Audio("./assets/audio/capture.mp3"),
+            notation: "x",
+        };
+        this.checkedAudio = {
+            moveType: "checked",
+            sound: new Audio("./assets/audio/move-check.mp3"),
+            notation: "+",
+        };
+        this.castleAudio = {
+            moveType: "castle",
+            sound: new Audio("./assets/audio/castle.mp3"),
+            notationKingSide: "O-O",
+            notationQueenSide: "O-O-O",
+        };
+        this.promoteAudio = {
+            moveType: "promote",
+            sound: new Audio("./assets/audio/promote.mp3"),
+            notation: "=",
+        };
+        this.currentMoveSound = this.placeAudio;
+        this.promotedPawnTo = "";
+        // this.placeAudio.dataset.notation = "";
+        // this.captureAudio.dataset.notation = "x";
+        // this.checkedAudio.dataset.notation = "+";
+        // this.castleAudio.dataset.notationKingSide = "0-0";
+        // this.castleAudio.dataset.notationQueenSide = "0-0-0";
+        // this.promoteAudio.dataset.notation = "=";
         this.initializeVariables();
         this.createGame();
     }
@@ -30,6 +69,8 @@ class GameBoard {
         this.nextStateStack = [];
         this.whitePlayersTurn = true;
         this.totalPieces = new Map();
+        this.currentEnPassantPosition = "-";
+        this.currentEnPassantPawn = "";
         this.clearSquare();
         this.updateTimer();
     }
@@ -84,21 +125,63 @@ class GameBoard {
             htmlElement.insertAdjacentElement("beforeend", row);
         }
     }
+    generateFEN() {
+        let fenString = "";
+        let whiteCastlable = "";
+        let blackCastlable = "";
+        const playersTurn = this.whitePlayersTurn ? "w" : "b";
+        for (const row of this.board) {
+            for (const piece of row) {
+                if (piece instanceof Piece) {
+                    fenString += piece.getCharID();
+                    if (piece instanceof King) {
+                        if (piece.getCanCastleKingSide()) {
+                            piece.getIsWhite()
+                                ? (whiteCastlable += "K")
+                                : (blackCastlable += "k");
+                        }
+                        if (piece.getCanCastleQueenSide()) {
+                            piece.getIsWhite()
+                                ? (whiteCastlable += "Q")
+                                : (blackCastlable += "q");
+                        }
+                    }
+                }
+                else {
+                    let a = fenString.charCodeAt(fenString.length - 1);
+                    if (isDigit(a)) {
+                        const digit = fenString.charAt(fenString.length - 1);
+                        let tempString = fenString.slice(0, -1);
+                        tempString += Number(digit) + Number(1);
+                        fenString = tempString;
+                    }
+                    else {
+                        fenString += "1";
+                    }
+                }
+            }
+            fenString += "/";
+        }
+        fenString = `${fenString.slice(0, -1)} ${playersTurn} ${whiteCastlable}${blackCastlable} ${this.currentEnPassantPosition}`;
+        return fenString;
+    }
     createChessPieces() {
-        const pattern = "RNBQKBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbqkbnr";
+        const pattern = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
         let x = 0;
         let y = 0;
         for (let c of pattern) {
-            let char = c.toLowerCase();
+            const char = c.toLowerCase();
             if (char === "/") {
                 x++;
                 y = 0;
             }
-            else if (char === "8") {
-                y = 7;
+            else if (isDigit(char.charCodeAt(0))) {
+                for (let i = 0; i < Number(char); i++) {
+                    y++;
+                }
             }
             else {
-                let isWhite = isLowerCase(c.charCodeAt(0));
+                const isWhite = isUpperCase(c.charCodeAt(0));
                 const square = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
                 let piece;
                 const coords = getCoords(x, y);
@@ -129,16 +212,32 @@ class GameBoard {
                 y++;
             }
         }
-        this.updateState();
         // this.generateHeatMaps();
         this.updateAvailableMoves();
     }
+    // private readFEN(fenStr: string): void {}
+    pieceFactory(char, x, y, isWhite, coords) {
+        switch (char) {
+            case "r":
+                return new Rook(x, y, isWhite, "rook", coords);
+            case "n":
+                return new Knight(x, y, isWhite, "knight", coords);
+            case "b":
+                return new Bishop(x, y, isWhite, "bishop", coords);
+            case "q":
+                return new Queen(x, y, isWhite, "queen", coords);
+            case "k":
+                return new King(x, y, isWhite, "king", coords);
+            case "p":
+                return new Pawn(x, y, isWhite, "pawn", coords);
+        }
+    }
     createChessElement(boardSquare, piece, isPromotedPawn) {
         const pieceElement = document.createElement("img");
-        pieceElement.dataset.x = String(piece.getX());
-        pieceElement.dataset.y = String(piece.getY());
+        pieceElement.dataset.x = String(piece.getRank());
+        pieceElement.dataset.y = String(piece.getFile());
         pieceElement.setAttribute("name", "chess-piece");
-        this.board[piece.getX()][piece.getY()] = piece;
+        this.board[piece.getRank()][piece.getFile()] = piece;
         pieceElement.src = piece.getImage();
         pieceElement.classList.add("chess-piece");
         pieceElement.draggable = true;
@@ -170,16 +269,17 @@ class GameBoard {
                 return;
         }
         const boardSquare = document.querySelector(`.square[data-x="${pawnX}"][data-y="${pawnY}"]`);
-        this.promoteAudio.play();
+        this.updateCardValue(piece, this.isPromoting);
+        this.closePromotePawnModal();
+        this.promotedPawnTo = piece.getCharID().toUpperCase();
+        this.promoteAudio.sound.play();
         this.removePiece(pawnToPromote, false);
         this.createChessElement(boardSquare, piece, true);
         this.addPiece(piece);
-        this.closePromotePawnModal();
         this.updateAvailableMoves();
         if (this.isChecked()) {
-            this.checkedAudio.play();
+            this.checkedAudio.sound.play();
         }
-        console.log(this.whitePlayer.getAvailablePieces());
     }
     updateTimer() {
         if (this.whitePlayersTurn) {
@@ -195,8 +295,8 @@ class GameBoard {
         if (changeCount) {
             this.changeCount(piece);
         }
-        document.querySelector(`.chess-piece[data-x="${piece.getX()}"][data-y="${piece.getY()}"]`).remove();
-        this.board[piece.getX()][piece.getY()] = 0;
+        document.querySelector(`.chess-piece[data-x="${piece.getRank()}"][data-y="${piece.getFile()}"]`).remove();
+        this.board[piece.getRank()][piece.getFile()] = 0;
         piece.getIsWhite()
             ? this.whitePlayer.removePiece(piece)
             : this.blackPlayer.removePiece(piece);
@@ -208,8 +308,8 @@ class GameBoard {
         //     .getValidMoves(clonedBoard)
         //     .concat(currentPiece.getValidAttackMoves(clonedBoard));
         //   // const availableAttackMoves = currentPiece.getValidAttackMoves(
-        //   //   currentPiece.getX(),
-        //   //   currentPiece.getY(),
+        //   //   currentPiece.getRank(),
+        //   //   currentPiece.getFile(),
         //   //   clonedBoard
         //   // );
         //   for (const moves of availableMoves) {
@@ -412,13 +512,15 @@ class GameBoard {
         }
         const newPositionX = Number(e.target.dataset.x);
         const newPositionY = Number(e.target.dataset.y);
-        const oldPositionX = this.selectedPiece.getX();
-        const oldPositionY = this.selectedPiece.getY();
+        const oldPositionX = this.selectedPiece.getRank();
+        const oldPositionY = this.selectedPiece.getFile();
         if (newPositionX === oldPositionX && newPositionY === oldPositionY)
             return;
         const newBoardElement = document.querySelector(`[data-x="${newPositionX}"][data-y="${newPositionY}"]`);
         if (JSON.parse(newBoardElement.dataset.isMoveableTo)) {
             this.removeLastMoveHighlight();
+            this.unsetEnPassant();
+            this.updateState();
             this.whitePlayersTurn = !this.whitePlayersTurn;
             if (this.selectedPiece instanceof King &&
                 this.board[newPositionX][newPositionY] instanceof Rook &&
@@ -429,36 +531,35 @@ class GameBoard {
             else {
                 this.whitePlayer.setIsChecked(false);
                 this.blackPlayer.setIsChecked(false);
-                const audio = this.movePieceOnBoard(oldPositionX, oldPositionY, newPositionX, newPositionY);
-                audio.play();
-                console.log(`${this.selectedPiece.getID()}${audio.dataset.notation}${getCoords(newPositionX, newPositionY)}`);
+                this.currentMoveSound = this.movePieceOnBoard(oldPositionX, oldPositionY, newPositionX, newPositionY);
+                this.currentMoveSound.sound.play();
             }
             this.addLastMoveHighlight(oldPositionX, oldPositionY);
             this.clearSquare();
             this.updateTimer();
+            this.updateAvailableMoves();
         }
-        this.updateAvailableMoves();
-        this.unselectPiece();
-        this.updateState();
+        // this.unselectPiece();
+        // this.updateState();
         // Use something like this for dragged element
         // document.querySelector(".boobs")?.remove();
     }
     castleKing(rookPiece) {
         if (!this.selectedPiece)
             return;
-        const rookX = rookPiece.getX();
-        const rookY = rookPiece.getY();
+        const rookX = rookPiece.getRank();
+        const rookY = rookPiece.getFile();
         const newBoardElement = document.querySelector(`[data-x="${rookX}"][data-y="${rookY}"]`);
         if (JSON.parse(newBoardElement.dataset.isMoveableTo)) {
-            const newKingsPositionY = (rookY > this.selectedPiece.getY() ? 2 : -2) +
-                this.selectedPiece.getY();
-            const kingsCurrentX = this.selectedPiece.getX();
-            this.movePieceOnBoard(kingsCurrentX, this.selectedPiece.getY(), kingsCurrentX, newKingsPositionY);
-            const newRooksPositionX = (rookY > this.selectedPiece.getY() ? -1 : 1) + newKingsPositionY;
+            const newKingsPositionY = (rookY > this.selectedPiece.getFile() ? 2 : -2) +
+                this.selectedPiece.getFile();
+            const kingsCurrentX = this.selectedPiece.getRank();
+            this.movePieceOnBoard(kingsCurrentX, this.selectedPiece.getFile(), kingsCurrentX, newKingsPositionY);
+            const newRooksPositionX = (rookY > this.selectedPiece.getFile() ? -1 : 1) + newKingsPositionY;
             this.movePieceOnBoard(rookX, rookY, rookX, newRooksPositionX);
             rookPiece.setHadFirstMove();
             this.selectedPiece.setHadFirstMove();
-            this.castleAudio.play();
+            this.castleAudio.sound.play();
         }
         this.unselectPiece();
     }
@@ -472,8 +573,8 @@ class GameBoard {
         }
         this.board[newPositionX][newPositionY] = boardSquare;
         this.board[oldPositionX][oldPositionY] = 0;
-        boardSquare.setX(newPositionX);
-        boardSquare.setY(newPositionY);
+        boardSquare.setRank(newPositionX);
+        boardSquare.setFile(newPositionY);
         this.updatePiece(boardSquare);
         boardSquare.setCoords(getCoords(newPositionX, newPositionY));
         const pieceElement = document.querySelector(`.chess-piece[data-x="${oldPositionX}"][data-y="${oldPositionY}"]`);
@@ -493,6 +594,10 @@ class GameBoard {
                 else if (!boardSquare.getHadFirstMove()) {
                     if (Math.abs(oldPositionX - newPositionX) === 2) {
                         boardSquare.setCanEnPassant(true);
+                        this.currentEnPassantPosition = `${getYAxis(boardSquare.getFile())}${getXAxis(boardSquare.getIsWhite()
+                            ? boardSquare.getRank() + 1
+                            : boardSquare.getRank() - 1)}`;
+                        this.currentEnPassantPawn = boardSquare.getCoords();
                     }
                 }
                 else if (oldPositionY !== newPositionY &&
@@ -510,18 +615,21 @@ class GameBoard {
         return this.isChecked() ? this.checkedAudio : moveSound;
     }
     unsetEnPassant() {
-        this.getPieces().forEach((piece) => {
-            if (piece instanceof Pawn)
-                piece.setCanEnPassant(false);
-        });
+        if (this.currentEnPassantPosition !== "-") {
+            this.getPieces().get(this.currentEnPassantPawn).setCanEnPassant(false);
+            this.currentEnPassantPosition = "-";
+            this.currentEnPassantPawn = "";
+        }
     }
     closePromotePawnModal() {
         document
             .querySelectorAll(".modal-image")
             .forEach((modalImage) => modalImage.removeEventListener("click", this.promotePawn.bind, true));
-        document.querySelector(".modal").classList.remove("visible-modal");
+        document.querySelectorAll(".modal").forEach((modal) => modal.classList.remove("visible-modal"));
+        this.isPromoting = false;
     }
     openPromotePawnModal(modalPosX, modalPosY) {
+        this.isPromoting = true;
         const isWhite = this.board[modalPosX][modalPosY].getIsWhite();
         isWhite ? ".modal--white" : ".modal--white";
         const modal = document.querySelector(`${isWhite ? ".modal--white" : ".modal--black"}`);
@@ -537,8 +645,8 @@ class GameBoard {
     }
     updateKingPosition(piece) {
         piece.getIsWhite()
-            ? this.whitePlayer.setKingsPosition(piece.getX(), piece.getY())
-            : this.blackPlayer.setKingsPosition(piece.getX(), piece.getY());
+            ? this.whitePlayer.setKingsPosition(piece.getRank(), piece.getFile())
+            : this.blackPlayer.setKingsPosition(piece.getRank(), piece.getFile());
     }
     isChecked() {
         // for(const row of this.board) {
@@ -596,7 +704,7 @@ class GameBoard {
     updatePiece(piece) {
         const oldCoords = piece.getCoords();
         this.getPieces().delete(piece.getCoords());
-        const newCoords = getCoords(piece.getX(), piece.getY());
+        const newCoords = getCoords(piece.getRank(), piece.getFile());
         this.getPieces().set(newCoords, piece);
         piece.getIsWhite()
             ? this.whitePlayer.updatePiece(piece, oldCoords)
@@ -625,7 +733,7 @@ class GameBoard {
                         ? this.whitePlayer.getKingsPosition()
                         : this.blackPlayer.getKingsPosition());
                     const clonedBoard = this.duplicateCurrentBoard();
-                    clonedBoard[piece.getX()][piece.getY()] = 0;
+                    clonedBoard[piece.getRank()][piece.getFile()] = 0;
                     clonedBoard[move[0]][move[1]] = piece;
                     for (const row of clonedBoard) {
                         for (const square of row) {
@@ -648,7 +756,30 @@ class GameBoard {
         this.whitePlayer.createNewTimer();
         this.blackPlayer.createNewTimer();
     }
+    generateNotation() {
+        if (!this.selectedPiece)
+            return "";
+        switch (this.currentMoveSound.moveType) {
+            case "place": {
+                return `${this.selectedPiece.getCharID().toUpperCase()}${getCoords(this.selectedPiece.getRank(), this.selectedPiece.getFile())}`;
+            }
+            case "capture": {
+                return `${this.selectedPiece.getCharID().toUpperCase()}${this.currentMoveSound.notation}${getCoords(this.selectedPiece.getRank(), this.selectedPiece.getFile())}`;
+            }
+            case "checked": {
+                return `${this.selectedPiece.getCharID().toUpperCase()}${getCoords(this.selectedPiece.getRank(), this.selectedPiece.getFile())}${this.currentMoveSound.notation}`;
+            }
+            case "castle": {
+            }
+            case "promote": {
+                return `${getCoords(this.selectedPiece.getRank(), this.selectedPiece.getFile())}${this.currentMoveSound.notation}${this.promotedPawnTo}`;
+            }
+        }
+        return "";
+    }
     updateAvailableMoves() {
+        if (this.isPromoting)
+            return;
         this.generateHeatMaps();
         this.getPieces().forEach((piece) => {
             let availableMoves = piece.getValidMoves(this.board);
@@ -670,9 +801,10 @@ class GameBoard {
         this.generateValidNextMoves();
         this.whitePlayer.updateMoves();
         this.blackPlayer.updateMoves();
-        this.unsetEnPassant();
+        // this.unsetEnPassant();
         this.getCastlableMoves();
         this.checkVictory();
+        this.unselectPiece();
     }
     getCastlableMoves() {
         this.whitePlayer.canCastle(this.board);
@@ -724,6 +856,9 @@ class GameBoard {
         if (!Array.isArray(this.prevStateStack) ||
             !this.prevStateStack.length ||
             this.prevStateStack.length >= 0) {
+            if (this.nextStateStack.length === 0) {
+                this.nextStateStack.push(this.duplicateCurrentBoard());
+            }
             const prevBoard = this.prevStateStack.pop();
             if (typeof prevBoard !== "undefined") {
                 const dupeBoard = prevBoard.map((row) => [...row]);
@@ -745,6 +880,7 @@ class GameBoard {
         }
     }
     updateBoardState(savedState) {
+        console.log(this.nextStateStack);
         for (let x = 0; x < this.BOARD_COLS; x++) {
             for (let y = 0; y < this.BOARD_ROWS; y++) {
                 const currentPiece = document.querySelector(`.chess-piece[data-x="${x}"][data-y="${y}"]`);
@@ -764,6 +900,9 @@ class GameBoard {
                     square.insertAdjacentElement("beforeend", pieceElement);
                 }
             }
+        }
+        if (this.nextStateStack.length === 0) {
+            this.addChessHandlers();
         }
     }
     updateSavedState(direction) {
@@ -829,12 +968,12 @@ class GameBoard {
             const newClassName = oldClassName.replace(oldClassName.charAt(19), String(capturedPieceCount + 1));
             capturedPiecesEl.classList.add(newClassName);
         }
-        this.updateCardValue(piece);
+        this.updateCardValue(piece, this.isPromoting);
     }
-    updateCardValue(piece) {
-        const playerValueEl = document.querySelector(`.player--card-points-${piece.getIsWhite() ? "w" : "b"}`);
-        const enemyPlayerValueEl = document.querySelector(`.player--card-points-${!piece.getIsWhite() ? "w" : "b"}`);
-        playerValueEl.dataset.value = String(Number(playerValueEl.dataset.value) + Number(piece.getValue()));
+    updateCardValue(piece, isPromoting) {
+        const playerValueEl = document.querySelector(`.player--card-points-${piece.getIsWhite() && !isPromoting ? "w" : "b"}`);
+        const enemyPlayerValueEl = document.querySelector(`.player--card-points-${!piece.getIsWhite() && !isPromoting ? "w" : "b"}`);
+        playerValueEl.dataset.value = String(Number(playerValueEl.dataset.value) + Number(piece.getPieceValue()));
         if (Number(playerValueEl.dataset.value) >
             Number(enemyPlayerValueEl.dataset.value)) {
             playerValueEl.textContent = `${Number(playerValueEl.dataset.value) -
@@ -1042,7 +1181,9 @@ class GameBoard {
     }
 }
 const game = new GameBoard();
-console.log(game);
-function isLowerCase(charCode) {
-    return charCode >= 97 && charCode <= 122;
+function isUpperCase(charCode) {
+    return charCode >= 65 && charCode <= 90;
+}
+function isDigit(charCode) {
+    return charCode >= 48 && charCode <= 57;
 }

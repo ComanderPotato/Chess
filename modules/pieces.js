@@ -1,18 +1,19 @@
 export class Piece {
-    constructor(x, y, isWhite, id, legalMoves, image, coords, value, figurineCode, type) {
-        this.isValid = (posX, posY) => {
-            return posX >= 0 && posX < 8 && posY >= 0 && posY < 8;
+    constructor(rank, file, isWhite, id, legalMoves, image, coords, pieceValue, figurineCode, charID, type) {
+        this.isValid = (rank, file) => {
+            return rank >= 0 && rank < 8 && file >= 0 && file < 8;
         };
-        this.x = x;
-        this.y = y;
+        this.rank = rank;
+        this.file = file;
         this.isWhite = isWhite;
         this.id = id;
         this.legalMoves = legalMoves;
         this.image = image;
         this.coords = coords;
-        this.value = value;
+        this.pieceValue = pieceValue;
         this.type = type;
         this.figuirineCode = figurineCode;
+        this.charID = charID;
         this.availableMoves = [];
     }
     isSameColor(targetPiece) {
@@ -29,17 +30,17 @@ export class Piece {
             this.availableMoves.push(move);
         }
     }
-    getX() {
-        return this.x;
+    getRank() {
+        return this.rank;
     }
-    setX(newX) {
-        this.x = newX;
+    setRank(newRank) {
+        this.rank = newRank;
     }
-    getY() {
-        return this.y;
+    getFile() {
+        return this.file;
     }
-    setY(newY) {
-        this.y = newY;
+    setFile(newFile) {
+        this.file = newFile;
     }
     getIsWhite() {
         return this.isWhite;
@@ -62,11 +63,14 @@ export class Piece {
     getType() {
         return this.type;
     }
-    getValue() {
-        return this.value;
+    getPieceValue() {
+        return this.pieceValue;
     }
     getFigurine() {
         return this.figuirineCode;
+    }
+    getCharID() {
+        return this.charID;
     }
     setLegalMoves(newLegalMoves) {
         this.legalMoves = newLegalMoves;
@@ -76,8 +80,8 @@ export class Piece {
         if (this instanceof incrementalPiece) {
             if (this instanceof Pawn) {
                 for (const move of this.getlegalMoves()) {
-                    const newPositionX = this.getX() + move[0];
-                    const newPositionY = this.getY() + move[1];
+                    const newPositionX = this.getRank() + move[0];
+                    const newPositionY = this.getFile() + move[1];
                     if (this.isValid(newPositionX, newPositionY)) {
                         const newPosition = board[newPositionX][newPositionY];
                         if (typeof newPosition === "number") {
@@ -89,8 +93,8 @@ export class Piece {
                     }
                 }
                 for (const move of this.getAttacks()) {
-                    const newPositionX = this.getX() + move[0];
-                    const newPositionY = this.getY() + move[1];
+                    const newPositionX = this.getRank() + move[0];
+                    const newPositionY = this.getFile() + move[1];
                     if (this.isValid(newPositionX, newPositionY)) {
                         const newPosition = board[newPositionX][newPositionY];
                         if (newPosition instanceof Piece &&
@@ -98,7 +102,7 @@ export class Piece {
                             validMoves.push([newPositionX, newPositionY]);
                         }
                         else {
-                            const possiblePawn = board[this.getX()][newPositionY];
+                            const possiblePawn = board[this.getRank()][newPositionY];
                             if (possiblePawn instanceof Pawn &&
                                 possiblePawn.getCanEnPassant()) {
                                 validMoves.push([newPositionX, newPositionY]);
@@ -109,8 +113,8 @@ export class Piece {
                 return validMoves;
             }
             for (const moves of this.getlegalMoves()) {
-                let newPositionX = this.getX() + moves[0];
-                let newPositionY = this.getY() + moves[1];
+                let newPositionX = this.getRank() + moves[0];
+                let newPositionY = this.getFile() + moves[1];
                 while (this.isValid(newPositionX, newPositionY)) {
                     const newPosition = board[newPositionX][newPositionY];
                     if (typeof newPosition === "number" ||
@@ -127,8 +131,8 @@ export class Piece {
         }
         else {
             for (const moves of this.getlegalMoves()) {
-                const newPositionX = this.getX() + moves[0];
-                const newPositionY = this.getY() + moves[1];
+                const newPositionX = this.getRank() + moves[0];
+                const newPositionY = this.getFile() + moves[1];
                 if (this.isValid(newPositionX, newPositionY)) {
                     const newPosition = board[newPositionX][newPositionY];
                     if (typeof newPosition === "number" ||
@@ -145,8 +149,8 @@ export class Piece {
         if (this instanceof incrementalPiece) {
             if (this instanceof Pawn) {
                 for (const move of this.getAttacks()) {
-                    const newPositionX = this.getX() + move[0];
-                    const newPositionY = this.getY() + move[1];
+                    const newPositionX = this.getRank() + move[0];
+                    const newPositionY = this.getFile() + move[1];
                     if (this.isValid(newPositionX, newPositionY)) {
                         validMoves.push([newPositionX, newPositionY]);
                     }
@@ -154,8 +158,8 @@ export class Piece {
                 return validMoves;
             }
             for (const moves of this.getlegalMoves()) {
-                let newPositionX = this.getX() + moves[0];
-                let newPositionY = this.getY() + moves[1];
+                let newPositionX = this.getRank() + moves[0];
+                let newPositionY = this.getFile() + moves[1];
                 while (this.isValid(newPositionX, newPositionY)) {
                     const newPosition = board[newPositionX][newPositionY];
                     if (typeof newPosition === "number" ||
@@ -172,8 +176,8 @@ export class Piece {
         }
         else {
             for (const moves of this.getlegalMoves()) {
-                const newPositionX = this.getX() + moves[0];
-                const newPositionY = this.getY() + moves[1];
+                const newPositionX = this.getRank() + moves[0];
+                const newPositionY = this.getFile() + moves[1];
                 if (this.isValid(newPositionX, newPositionY)) {
                     const newPosition = board[newPositionX][newPositionY];
                     if (typeof newPosition === "number" ||
@@ -187,17 +191,19 @@ export class Piece {
     }
 }
 export class positionalPiece extends Piece {
-    constructor(x, y, isWhite, id, legalMoves, image, coords, value, figurineCode) {
-        super(x, y, isWhite, id, legalMoves, image, coords, value, figurineCode, "positional");
+    constructor(rank, file, isWhite, id, legalMoves, image, coords, value, figurineCode, charID) {
+        super(rank, file, isWhite, id, legalMoves, image, coords, value, figurineCode, charID, "positional");
     }
 }
 export class incrementalPiece extends Piece {
-    constructor(x, y, isWhite, id, legalMoves, image, coords, value, figurineCode) {
-        super(x, y, isWhite, id, legalMoves, image, coords, value, figurineCode, "incremental");
+    constructor(rank, file, isWhite, id, legalMoves, image, coords, value, figurineCode, charID) {
+        super(rank, file, isWhite, id, legalMoves, image, coords, value, figurineCode, charID, "incremental");
     }
 }
 export class Pawn extends incrementalPiece {
-    constructor(x, y, isWhite, id, coords) {
+    constructor(rank, file, isWhite, id, coords) {
+        const pieceValue = 1;
+        const charID = isWhite ? "P" : "p";
         const [image, legalMoves] = isWhite
             ? [
                 "../assets/images/wp.png",
@@ -214,7 +220,7 @@ export class Pawn extends incrementalPiece {
                 ],
             ];
         const figurineCode = isWhite ? "&#9817" : "&#9823";
-        super(x, y, isWhite, id, legalMoves, image, coords, 1, figurineCode);
+        super(rank, file, isWhite, id, legalMoves, image, coords, pieceValue, figurineCode, charID);
         this.legalAttackMoves = isWhite
             ? [
                 [-1, 1],
@@ -254,14 +260,16 @@ export class Pawn extends incrementalPiece {
         this.setLegalMoves(this.getlegalMoves().slice(0, 1));
     }
     isPromotable() {
-        if (this.getX() === 0 || this.getX() === 7) {
+        if (this.getRank() === 0 || this.getRank() === 7) {
             return true;
         }
         return false;
     }
 }
 export class Queen extends incrementalPiece {
-    constructor(x, y, isWhite, id, coords) {
+    constructor(rank, file, isWhite, id, coords) {
+        const pieceValue = 9;
+        const charID = isWhite ? "Q" : "q";
         const image = isWhite
             ? "../assets/images/wq.png"
             : "../assets/images/bq.png";
@@ -276,11 +284,13 @@ export class Queen extends incrementalPiece {
             [-1, 0],
             [-1, 1],
         ];
-        super(x, y, isWhite, id, legalMoves, image, coords, 9, figurineCode);
+        super(rank, file, isWhite, id, legalMoves, image, coords, pieceValue, figurineCode, charID);
     }
 }
 export class King extends positionalPiece {
-    constructor(x, y, isWhite, id, coords) {
+    constructor(rank, file, isWhite, id, coords) {
+        const pieceValue = 4;
+        const charID = isWhite ? "K" : "k";
         const image = isWhite
             ? "../assets/images/wk.png"
             : "../assets/images/bk.png";
@@ -295,8 +305,10 @@ export class King extends positionalPiece {
             [-1, -1],
             [-1, 1],
         ];
-        super(x, y, isWhite, id, legalMoves, image, coords, 4, figurineCode);
+        super(rank, file, isWhite, id, legalMoves, image, coords, pieceValue, figurineCode, charID);
         this.hadFirstMove = false;
+        this.canCastleKingSide = false;
+        this.canCastleQueenSide = false;
     }
     getHadFirstMove() {
         return this.hadFirstMove;
@@ -305,8 +317,14 @@ export class King extends positionalPiece {
         // If had first move king cant castle
         this.hadFirstMove = true;
     }
+    getCanCastleKingSide() {
+        return this.canCastleKingSide;
+    }
+    getCanCastleQueenSide() {
+        return this.canCastleQueenSide;
+    }
     getCastlableMoves(board, player) {
-        if (this.hadFirstMove)
+        if (this.hadFirstMove || player.getIsChecked())
             return [];
         const castableMoves = [];
         if (!this.getHadFirstMove()) {
@@ -320,20 +338,32 @@ export class King extends positionalPiece {
             for (const rook of availableRooks) {
                 if (!rook.getHadFirstMove()) {
                     let isRookCastable = true;
-                    const rooksX = rook.getX();
-                    let rooksY = rook.getY();
-                    const incrementer = rooksY < this.getY() ? 1 : -1;
+                    const rooksX = rook.getRank();
+                    let rooksY = rook.getFile();
+                    const incrementer = rooksY < this.getFile() ? 1 : -1;
                     do {
                         rooksY += incrementer;
                         if (player.getOpponentHeatMap()[rooksX][rooksY] === -1 ||
                             (board[rooksX][rooksY] instanceof Piece &&
                                 !(board[rooksX][rooksY] instanceof King))) {
                             isRookCastable = false;
+                            if (rook.getFile() === 0) {
+                                this.canCastleQueenSide = false;
+                            }
+                            else {
+                                this.canCastleKingSide = false;
+                            }
                             break;
                         }
-                    } while (rooksY !== this.getY());
+                    } while (rooksY !== this.getFile());
                     if (isRookCastable) {
-                        castableMoves.push([rook.getX(), rook.getY()]);
+                        if (rook.getFile() === 0) {
+                            this.canCastleQueenSide = true;
+                        }
+                        else {
+                            this.canCastleKingSide = true;
+                        }
+                        castableMoves.push([rook.getRank(), rook.getFile()]);
                     }
                 }
             }
@@ -343,7 +373,9 @@ export class King extends positionalPiece {
     }
 }
 export class Rook extends incrementalPiece {
-    constructor(x, y, isWhite, id, coords) {
+    constructor(rank, file, isWhite, id, coords) {
+        const pieceValue = 5;
+        const charID = isWhite ? "R" : "r";
         const image = isWhite
             ? "../assets/images/wr.png"
             : "../assets/images/br.png";
@@ -354,7 +386,7 @@ export class Rook extends incrementalPiece {
             [1, 0],
             [-1, 0],
         ];
-        super(x, y, isWhite, id, legalMoves, image, coords, 5, figurineCode);
+        super(rank, file, isWhite, id, legalMoves, image, coords, pieceValue, figurineCode, charID);
         this.hadFirstMove = false;
     }
     getHadFirstMove() {
@@ -366,7 +398,9 @@ export class Rook extends incrementalPiece {
     }
 }
 export class Bishop extends incrementalPiece {
-    constructor(x, y, isWhite, id, coords) {
+    constructor(rank, file, isWhite, id, coords) {
+        const pieceValue = 3;
+        const charID = isWhite ? "B" : "b";
         const image = isWhite
             ? "../assets/images/wb.png"
             : "../assets/images/bb.png";
@@ -377,14 +411,16 @@ export class Bishop extends incrementalPiece {
             [-1, -1],
             [-1, 1],
         ];
-        super(x, y, isWhite, id, legalMoves, image, coords, 3, figurineCode);
+        super(rank, file, isWhite, id, legalMoves, image, coords, pieceValue, figurineCode, charID);
     }
 }
 export class Knight extends positionalPiece {
-    constructor(x, y, isWhite, id, coords) {
+    constructor(rank, file, isWhite, id, coords) {
+        const pieceValue = 3;
         const image = isWhite
             ? "../assets/images/wn.png"
             : "../assets/images/bn.png";
+        const charID = isWhite ? "N" : "n";
         const figurineCode = isWhite ? "&#9816" : "&#9822";
         const legalMoves = [
             [2, 1],
@@ -396,6 +432,6 @@ export class Knight extends positionalPiece {
             [-1, 2],
             [-1, -2],
         ];
-        super(x, y, isWhite, id, legalMoves, image, coords, 3, figurineCode);
+        super(rank, file, isWhite, id, legalMoves, image, coords, pieceValue, figurineCode, charID);
     }
 }

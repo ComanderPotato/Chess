@@ -19,7 +19,14 @@ interface Coords {
 interface BoardState {
   board: (number | Piece)[][];
   moveSound: HTMLAudioElement;
-  notation: string;
+  moveNotation: string;
+}
+interface AudioInfo {
+  moveType: string;
+  sound: HTMLAudioElement;
+  notation?: string;
+  notationQueenSide?: string;
+  notationKingSide?: string;
 }
 class GameBoard {
   private whitePlayer: Player;
@@ -32,32 +39,63 @@ class GameBoard {
   private whitePlayersTurn: boolean;
   private totalPieces: Map<string, Piece>;
   private isBoardRotated: boolean;
-
+  private currentEnPassantPosition: string;
+  private currentEnPassantPawn: string;
   private readonly BOARD_COLS: number = 8;
   private readonly BOARD_ROWS: number = 8;
-  private readonly placeAudio: HTMLAudioElement = new Audio(
-    "./assets/audio/move-self.mp3"
-  );
-  private readonly captureAudio: HTMLAudioElement = new Audio(
-    "./assets/audio/capture.mp3"
-  );
-  private readonly checkedAudio: HTMLAudioElement = new Audio(
-    "./assets/audio/move-check.mp3"
-  );
-  private readonly castleAudio: HTMLAudioElement = new Audio(
-    "./assets/audio/castle.mp3"
-  );
-  private readonly promoteAudio: HTMLAudioElement = new Audio(
-    "./assets/audio/promote.mp3"
-  );
+  private isPromoting: boolean = false;
+  private readonly placeAudio: AudioInfo = {
+    moveType: "place",
+    sound: new Audio("./assets/audio/move-self.mp3"),
+    notation: "",
+  };
+  private readonly captureAudio: AudioInfo = {
+    moveType: "capture",
+    sound: new Audio("./assets/audio/capture.mp3"),
+    notation: "x",
+  };
+  private readonly checkedAudio: AudioInfo = {
+    moveType: "checked",
+    sound: new Audio("./assets/audio/move-check.mp3"),
+    notation: "+",
+  };
+  private readonly castleAudio: AudioInfo = {
+    moveType: "castle",
+    sound: new Audio("./assets/audio/castle.mp3"),
+    notationKingSide: "O-O",
+    notationQueenSide: "O-O-O",
+  };
+
+  private readonly promoteAudio: AudioInfo = {
+    moveType: "promote",
+    sound: new Audio("./assets/audio/promote.mp3"),
+    notation: "=",
+  };
+  private currentMoveSound: AudioInfo = this.placeAudio;
+  private promotedPawnTo: string = "";
+  // private readonly placeAudio: HTMLAudioElement = new Audio(
+  //   "./assets/audio/move-self.mp3"
+  // );
+  // private readonly captureAudio: HTMLAudioElement = new Audio(
+  //   "./assets/audio/capture.mp3"
+  // );
+  // private readonly checkedAudio: HTMLAudioElement = new Audio(
+  //   "./assets/audio/move-check.mp3"
+  // );
+  // private readonly castleAudio: HTMLAudioElement = new Audio(
+  //   "./assets/audio/castle.mp3"
+  // );
+  // private readonly promoteAudio: HTMLAudioElement = new Audio(
+  //   "./assets/audio/promote.mp3"
+  // );
   // private currentMoveSound: HTMLAudioElement | null;
   constructor() {
-    this.placeAudio.dataset.notation = "";
-    this.captureAudio.dataset.notation = "x";
-    this.checkedAudio.dataset.notation = "+";
-    this.castleAudio.dataset.notationKingSide = "0-0";
-    this.castleAudio.dataset.notationQueenSide = "0-0-0";
-    this.promoteAudio.dataset.notation = "=";
+    // this.placeAudio.dataset.notation = "";
+    // this.captureAudio.dataset.notation = "x";
+    // this.checkedAudio.dataset.notation = "+";
+    // this.castleAudio.dataset.notationKingSide = "0-0";
+    // this.castleAudio.dataset.notationQueenSide = "0-0-0";
+    // this.promoteAudio.dataset.notation = "=";
     this.initializeVariables();
     this.createGame();
   }
@@ -71,6 +109,9 @@ class GameBoard {
     this.nextStateStack = [];
     this.whitePlayersTurn = true;
     this.totalPieces = new Map<string, Piece>();
+    this.currentEnPassantPosition = "-";
+    this.currentEnPassantPawn = "";
+
     this.clearSquare();
     this.updateTimer();
   }
@@ -125,19 +166,64 @@ class GameBoard {
       htmlElement.insertAdjacentElement("beforeend", row);
     }
   }
+  private generateFEN(): string {
+    let fenString = "";
+    let whiteCastlable = "";
+    let blackCastlable = "";
+    const playersTurn = this.whitePlayersTurn ? "w" : "b";
+    for (const row of this.board) {
+      for (const piece of row) {
+        if (piece instanceof Piece) {
+          fenString += piece.getCharID();
+          if (piece instanceof King) {
+            if (piece.getCanCastleKingSide()) {
+              piece.getIsWhite()
+                ? (whiteCastlable += "K")
+                : (blackCastlable += "k");
+            }
+            if (piece.getCanCastleQueenSide()) {
+              piece.getIsWhite()
+                ? (whiteCastlable += "Q")
+                : (blackCastlable += "q");
+            }
+          }
+        } else {
+          let a = fenString.charCodeAt(fenString.length - 1);
+          if (isDigit(a)) {
+            const digit = fenString.charAt(fenString.length - 1);
+            let tempString = fenString.slice(0, -1);
+            tempString += Number(digit) + Number(1);
+            fenString = tempString;
+          } else {
+            fenString += "1";
+          }
+        }
+      }
+      fenString += "/";
+    }
+    fenString = `${fenString.slice(
+      0,
+      -1
+    )} ${playersTurn} ${whiteCastlable}${blackCastlable} ${
+      this.currentEnPassantPosition
+    }`;
+    return fenString;
+  }
   private createChessPieces(): void {
-    const pattern = "RNBQKBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbqkbnr";
+    const pattern = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
     let x = 0;
     let y = 0;
     for (let c of pattern) {
-      let char = c.toLowerCase();
+      const char = c.toLowerCase();
       if (char === "/") {
         x++;
         y = 0;
-      } else if (char === "8") {
-        y = 7;
+      } else if (isDigit(char.charCodeAt(0))) {
+        for (let i = 0; i < Number(char); i++) {
+          y++;
+        }
       } else {
-        let isWhite = isLowerCase(c.charCodeAt(0));
+        const isWhite = isUpperCase(c.charCodeAt(0));
         const square = document.querySelector(
           `[data-x="${x}"][data-y="${y}"]`
         ) as HTMLDivElement;
@@ -170,9 +256,31 @@ class GameBoard {
         y++;
       }
     }
-    this.updateState();
     // this.generateHeatMaps();
     this.updateAvailableMoves();
+  }
+  // private readFEN(fenStr: string): void {}
+  private pieceFactory(
+    char: "r" | "n" | "b" | "q" | "k" | "p",
+    x: number,
+    y: number,
+    isWhite: boolean,
+    coords: string
+  ): Piece {
+    switch (char) {
+      case "r":
+        return new Rook(x, y, isWhite, "rook", coords);
+      case "n":
+        return new Knight(x, y, isWhite, "knight", coords);
+      case "b":
+        return new Bishop(x, y, isWhite, "bishop", coords);
+      case "q":
+        return new Queen(x, y, isWhite, "queen", coords);
+      case "k":
+        return new King(x, y, isWhite, "king", coords);
+      case "p":
+        return new Pawn(x, y, isWhite, "pawn", coords);
+    }
   }
   private createChessElement(
     boardSquare: HTMLDivElement,
@@ -180,10 +288,10 @@ class GameBoard {
     isPromotedPawn?: boolean
   ): void {
     const pieceElement = document.createElement("img");
-    pieceElement.dataset.x = String(piece.getX());
-    pieceElement.dataset.y = String(piece.getY());
+    pieceElement.dataset.x = String(piece.getRank());
+    pieceElement.dataset.y = String(piece.getFile());
     pieceElement.setAttribute("name", "chess-piece");
-    this.board[piece.getX()][piece.getY()] = piece;
+    this.board[piece.getRank()][piece.getFile()] = piece;
     pieceElement.src = piece.getImage();
     pieceElement.classList.add("chess-piece");
     pieceElement.draggable = true;
@@ -241,16 +349,17 @@ class GameBoard {
     const boardSquare = document.querySelector(
       `.square[data-x="${pawnX}"][data-y="${pawnY}"]`
     ) as HTMLDivElement;
-    this.promoteAudio.play();
+    this.updateCardValue(piece, this.isPromoting);
+    this.closePromotePawnModal();
+    this.promotedPawnTo = piece.getCharID().toUpperCase();
+    this.promoteAudio.sound.play();
     this.removePiece(pawnToPromote, false);
     this.createChessElement(boardSquare, piece, true);
     this.addPiece(piece);
-    this.closePromotePawnModal();
     this.updateAvailableMoves();
     if (this.isChecked()) {
-      this.checkedAudio.play();
+      this.checkedAudio.sound.play();
     }
-    console.log(this.whitePlayer.getAvailablePieces());
   }
   private updateTimer() {
     if (this.whitePlayersTurn) {
@@ -267,10 +376,10 @@ class GameBoard {
     }
     (
       document.querySelector(
-        `.chess-piece[data-x="${piece.getX()}"][data-y="${piece.getY()}"]`
+        `.chess-piece[data-x="${piece.getRank()}"][data-y="${piece.getFile()}"]`
       ) as HTMLImageElement
     ).remove();
-    this.board[piece.getX()][piece.getY()] = 0;
+    this.board[piece.getRank()][piece.getFile()] = 0;
     piece.getIsWhite()
       ? this.whitePlayer.removePiece(piece)
       : this.blackPlayer.removePiece(piece);
@@ -288,8 +397,8 @@ class GameBoard {
     //     .getValidMoves(clonedBoard)
     //     .concat(currentPiece.getValidAttackMoves(clonedBoard));
     //   // const availableAttackMoves = currentPiece.getValidAttackMoves(
-    //   //   currentPiece.getX(),
-    //   //   currentPiece.getY(),
+    //   //   currentPiece.getRank(),
+    //   //   currentPiece.getFile(),
     //   //   clonedBoard
     //   // );
     //   for (const moves of availableMoves) {
@@ -501,7 +610,6 @@ class GameBoard {
 
   private movePiece(e: Event) {
     this.dragLeave(e);
-
     if (
       !(
         e.target instanceof HTMLDivElement ||
@@ -519,8 +627,8 @@ class GameBoard {
     }
     const newPositionX = Number(e.target.dataset.x);
     const newPositionY = Number(e.target.dataset.y);
-    const oldPositionX = this.selectedPiece.getX();
-    const oldPositionY = this.selectedPiece.getY();
+    const oldPositionX = this.selectedPiece.getRank();
+    const oldPositionY = this.selectedPiece.getFile();
     if (newPositionX === oldPositionX && newPositionY === oldPositionY) return;
 
     const newBoardElement = document.querySelector(
@@ -528,6 +636,8 @@ class GameBoard {
     ) as HTMLDivElement;
     if (JSON.parse(newBoardElement.dataset.isMoveableTo as string)) {
       this.removeLastMoveHighlight();
+      this.unsetEnPassant();
+      this.updateState();
       this.whitePlayersTurn = !this.whitePlayersTurn;
       if (
         this.selectedPiece instanceof King &&
@@ -539,57 +649,51 @@ class GameBoard {
       } else {
         this.whitePlayer.setIsChecked(false);
         this.blackPlayer.setIsChecked(false);
-        const audio = this.movePieceOnBoard(
+        this.currentMoveSound = this.movePieceOnBoard(
           oldPositionX,
           oldPositionY,
           newPositionX,
           newPositionY
         );
-        audio.play();
-        console.log(
-          `${this.selectedPiece.getID()}${audio.dataset.notation}${getCoords(
-            newPositionX,
-            newPositionY
-          )}`
-        );
+        this.currentMoveSound.sound.play();
       }
       this.addLastMoveHighlight(oldPositionX, oldPositionY);
       this.clearSquare();
       this.updateTimer();
+      this.updateAvailableMoves();
     }
-    this.updateAvailableMoves();
-    this.unselectPiece();
-    this.updateState();
+    // this.unselectPiece();
+    // this.updateState();
     // Use something like this for dragged element
     // document.querySelector(".boobs")?.remove();
   }
   private castleKing(rookPiece: Rook): void {
     if (!this.selectedPiece) return;
-    const rookX = rookPiece.getX();
-    const rookY = rookPiece.getY();
+    const rookX = rookPiece.getRank();
+    const rookY = rookPiece.getFile();
     const newBoardElement = document.querySelector(
       `[data-x="${rookX}"][data-y="${rookY}"]`
     ) as HTMLDivElement;
     if (JSON.parse(newBoardElement.dataset.isMoveableTo as string)) {
       const newKingsPositionY =
-        (rookY > this.selectedPiece.getY() ? 2 : -2) +
-        this.selectedPiece.getY();
-      const kingsCurrentX = this.selectedPiece.getX();
+        (rookY > this.selectedPiece.getFile() ? 2 : -2) +
+        this.selectedPiece.getFile();
+      const kingsCurrentX = this.selectedPiece.getRank();
 
       this.movePieceOnBoard(
         kingsCurrentX,
-        this.selectedPiece.getY(),
+        this.selectedPiece.getFile(),
         kingsCurrentX,
         newKingsPositionY
       );
       const newRooksPositionX =
-        (rookY > this.selectedPiece.getY() ? -1 : 1) + newKingsPositionY;
+        (rookY > this.selectedPiece.getFile() ? -1 : 1) + newKingsPositionY;
       this.movePieceOnBoard(rookX, rookY, rookX, newRooksPositionX);
 
       rookPiece.setHadFirstMove();
       (this.selectedPiece as King).setHadFirstMove();
 
-      this.castleAudio.play();
+      this.castleAudio.sound.play();
     }
     this.unselectPiece();
   }
@@ -598,7 +702,7 @@ class GameBoard {
     oldPositionY: number,
     newPositionX: number,
     newPositionY: number
-  ): HTMLAudioElement {
+  ): AudioInfo {
     let moveSound = this.placeAudio;
     const boardSquare = this.getPieces().get(
       getCoords(oldPositionX, oldPositionY)
@@ -610,8 +714,8 @@ class GameBoard {
     }
     this.board[newPositionX][newPositionY] = boardSquare;
     this.board[oldPositionX][oldPositionY] = 0;
-    boardSquare.setX(newPositionX);
-    boardSquare.setY(newPositionY);
+    boardSquare.setRank(newPositionX);
+    boardSquare.setFile(newPositionY);
     this.updatePiece(boardSquare);
     boardSquare.setCoords(getCoords(newPositionX, newPositionY));
     const pieceElement = document.querySelector(
@@ -636,6 +740,14 @@ class GameBoard {
         } else if (!boardSquare.getHadFirstMove()) {
           if (Math.abs(oldPositionX - newPositionX) === 2) {
             boardSquare.setCanEnPassant(true);
+            this.currentEnPassantPosition = `${getYAxis(
+              boardSquare.getFile()
+            )}${getXAxis(
+              boardSquare.getIsWhite()
+                ? boardSquare.getRank() + 1
+                : boardSquare.getRank() - 1
+            )}`;
+            this.currentEnPassantPawn = boardSquare.getCoords();
           }
         } else if (
           oldPositionY !== newPositionY &&
@@ -653,9 +765,13 @@ class GameBoard {
     return this.isChecked() ? this.checkedAudio : moveSound;
   }
   private unsetEnPassant(): void {
-    this.getPieces().forEach((piece) => {
-      if (piece instanceof Pawn) piece.setCanEnPassant(false);
-    });
+    if (this.currentEnPassantPosition !== "-") {
+      (this.getPieces().get(this.currentEnPassantPawn) as Pawn).setCanEnPassant(
+        false
+      );
+      this.currentEnPassantPosition = "-";
+      this.currentEnPassantPawn = "";
+    }
   }
   private closePromotePawnModal(): void {
     document
@@ -663,11 +779,13 @@ class GameBoard {
       .forEach((modalImage) =>
         modalImage.removeEventListener("click", this.promotePawn.bind, true)
       );
-    (document.querySelector(".modal") as HTMLDivElement).classList.remove(
-      "visible-modal"
+    (document.querySelectorAll(".modal") as NodeListOf<Element>).forEach(
+      (modal) => modal.classList.remove("visible-modal")
     );
+    this.isPromoting = false;
   }
   private openPromotePawnModal(modalPosX: number, modalPosY: number): void {
+    this.isPromoting = true;
     const isWhite = (this.board[modalPosX][modalPosY] as Piece).getIsWhite();
     isWhite ? ".modal--white" : ".modal--white";
     const modal = document.querySelector(
@@ -690,8 +808,8 @@ class GameBoard {
   }
   private updateKingPosition(piece: Piece) {
     piece.getIsWhite()
-      ? this.whitePlayer.setKingsPosition(piece.getX(), piece.getY())
-      : this.blackPlayer.setKingsPosition(piece.getX(), piece.getY());
+      ? this.whitePlayer.setKingsPosition(piece.getRank(), piece.getFile())
+      : this.blackPlayer.setKingsPosition(piece.getRank(), piece.getFile());
   }
 
   private isChecked(): boolean {
@@ -752,7 +870,7 @@ class GameBoard {
   private updatePiece(piece: Piece): void {
     const oldCoords = piece.getCoords();
     this.getPieces().delete(piece.getCoords());
-    const newCoords: string = getCoords(piece.getX(), piece.getY());
+    const newCoords: string = getCoords(piece.getRank(), piece.getFile());
     this.getPieces().set(newCoords, piece);
     piece.getIsWhite()
       ? this.whitePlayer.updatePiece(piece, oldCoords)
@@ -783,7 +901,7 @@ class GameBoard {
               : this.blackPlayer.getKingsPosition()
           );
           const clonedBoard = this.duplicateCurrentBoard();
-          clonedBoard[piece.getX()][piece.getY()] = 0;
+          clonedBoard[piece.getRank()][piece.getFile()] = 0;
           clonedBoard[move[0]][move[1]] = piece;
           for (const row of clonedBoard) {
             for (const square of row) {
@@ -807,11 +925,46 @@ class GameBoard {
       }
     }
   }
-  private resetPlayerTimers() {
+  private resetPlayerTimers(): void {
     this.whitePlayer.createNewTimer();
     this.blackPlayer.createNewTimer();
   }
+  private generateNotation(): string {
+    if (!this.selectedPiece) return "";
+    switch (this.currentMoveSound.moveType) {
+      case "place": {
+        return `${this.selectedPiece!.getCharID().toUpperCase()}${getCoords(
+          this.selectedPiece!.getRank(),
+          this.selectedPiece!.getFile()
+        )}`;
+      }
+      case "capture": {
+        return `${this.selectedPiece!.getCharID().toUpperCase()}${
+          this.currentMoveSound.notation
+        }${getCoords(
+          this.selectedPiece!.getRank(),
+          this.selectedPiece!.getFile()
+        )}`;
+      }
+      case "checked": {
+        return `${this.selectedPiece!.getCharID().toUpperCase()}${getCoords(
+          this.selectedPiece!.getRank(),
+          this.selectedPiece!.getFile()
+        )}${this.currentMoveSound.notation}`;
+      }
+      case "castle": {
+      }
+      case "promote": {
+        return `${getCoords(
+          this.selectedPiece!.getRank(),
+          this.selectedPiece!.getFile()
+        )}${this.currentMoveSound.notation}${this.promotedPawnTo}`;
+      }
+    }
+    return "";
+  }
   private updateAvailableMoves(): void {
+    if (this.isPromoting) return;
     this.generateHeatMaps();
     this.getPieces().forEach((piece) => {
       let availableMoves = piece.getValidMoves(this.board);
@@ -835,9 +988,10 @@ class GameBoard {
     this.generateValidNextMoves();
     this.whitePlayer.updateMoves();
     this.blackPlayer.updateMoves();
-    this.unsetEnPassant();
+    // this.unsetEnPassant();
     this.getCastlableMoves();
     this.checkVictory();
+    this.unselectPiece();
   }
   private getCastlableMoves(): void {
     this.whitePlayer.canCastle(this.board);
@@ -895,6 +1049,9 @@ class GameBoard {
       !this.prevStateStack.length ||
       this.prevStateStack.length >= 0
     ) {
+      if (this.nextStateStack.length === 0) {
+        this.nextStateStack.push(this.duplicateCurrentBoard());
+      }
       const prevBoard = this.prevStateStack.pop();
       if (typeof prevBoard !== "undefined") {
         const dupeBoard = prevBoard.map((row) => [...row]);
@@ -918,6 +1075,7 @@ class GameBoard {
     }
   }
   private updateBoardState(savedState: (number | Piece)[][]): void {
+    console.log(this.nextStateStack);
     for (let x = 0; x < this.BOARD_COLS; x++) {
       for (let y = 0; y < this.BOARD_ROWS; y++) {
         const currentPiece = document.querySelector(
@@ -940,6 +1098,9 @@ class GameBoard {
           square.insertAdjacentElement("beforeend", pieceElement);
         }
       }
+    }
+    if (this.nextStateStack.length === 0) {
+      this.addChessHandlers();
     }
   }
 
@@ -1023,17 +1184,17 @@ class GameBoard {
       );
       capturedPiecesEl.classList.add(newClassName);
     }
-    this.updateCardValue(piece);
+    this.updateCardValue(piece, this.isPromoting);
   }
-  private updateCardValue(piece: Piece): void {
+  private updateCardValue(piece: Piece, isPromoting: boolean): void {
     const playerValueEl = document.querySelector(
-      `.player--card-points-${piece.getIsWhite() ? "w" : "b"}`
+      `.player--card-points-${piece.getIsWhite() && !isPromoting ? "w" : "b"}`
     ) as HTMLSpanElement;
     const enemyPlayerValueEl = document.querySelector(
-      `.player--card-points-${!piece.getIsWhite() ? "w" : "b"}`
+      `.player--card-points-${!piece.getIsWhite() && !isPromoting ? "w" : "b"}`
     ) as HTMLSpanElement;
     playerValueEl.dataset.value = String(
-      Number(playerValueEl.dataset.value!) + Number(piece.getValue())
+      Number(playerValueEl.dataset.value!) + Number(piece.getPieceValue())
     );
     if (
       Number(playerValueEl.dataset.value!) >
@@ -1247,7 +1408,9 @@ class GameBoard {
 }
 
 const game = new GameBoard();
-console.log(game);
-function isLowerCase(charCode: number) {
-  return charCode >= 97 && charCode <= 122;
+function isUpperCase(charCode: number) {
+  return charCode >= 65 && charCode <= 90;
+}
+function isDigit(charCode: number) {
+  return charCode >= 48 && charCode <= 57;
 }

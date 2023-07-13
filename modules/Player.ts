@@ -23,7 +23,7 @@ export default class Player {
   }
   public updatePiece(piece: Piece, oldCoords: string): void {
     this.availablePieces.delete(oldCoords);
-    const newCoords: string = getCoords(piece.getX(), piece.getY());
+    const newCoords: string = getCoords(piece.getRank(), piece.getFile());
     this.availablePieces.set(newCoords, piece);
     this.availableMoves += piece.getAvailableMoves().length;
   }
