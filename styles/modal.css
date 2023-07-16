@@ -1,0 +1,35 @@
+.modal {
+  display: flex;
+  flex-direction: column;
+  width: 10rem;
+  position: absolute;
+  background-color: rgb(241, 236, 236);
+  cursor: pointer;
+  z-index: 1;
+  display: none;
+}
+/* .modal--black {
+  transform: rotate(180deg);
+} */
+.modal--black,
+.modal--black > .modal--image {
+  transform: rotate(180deg);
+  bottom: 0;
+}
+
+.modal--image-rotate {
+  rotate: 180deg;
+}
+
+.modal--black-image-rotate {
+  /* rotates black */
+}
+.modal--white-image-rotate {
+  /* transform: rotate(180deg); */
+  rotate: 180deg;
+  /* Rotates white */
+}
+
+.visible-modal {
+  display: flex;
+}

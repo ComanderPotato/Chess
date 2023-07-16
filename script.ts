@@ -16,10 +16,20 @@ interface Coords {
   y: number;
 }
 // Will need if I want to replay the sound of the move
+interface NotationBuilder {
+  pieceChar: string;
+  pieceUnicode: string;
+  pieceDestination: string;
+  moveType: string;
+  uniqueFile?: string;
+  uniqueRank?: string;
+}
 interface BoardState {
   board: (number | Piece)[][];
+  boardStateFEN: string;
   moveSound: HTMLAudioElement;
   moveNotation: string;
+  previousMove: string;
 }
 interface AudioInfo {
   moveType: string;
@@ -27,6 +37,7 @@ interface AudioInfo {
   notation?: string;
   notationQueenSide?: string;
   notationKingSide?: string;
+  isKingSide?: boolean;
 }
 class GameBoard {
   private whitePlayer: Player;
@@ -43,7 +54,21 @@ class GameBoard {
   private currentEnPassantPawn: string;
   private readonly BOARD_COLS: number = 8;
   private readonly BOARD_ROWS: number = 8;
+  private moveCount: number = 0;
   private isPromoting: boolean = false;
+  // private notationBuilder: NotationBuilder = {
+  //   pieceChar: "",
+  //   pieceUnicode: "",
+  //   pieceDestination: "",
+  //   moveType: "",
+  //   uniqueFile: "",
+  //   uniqueRank: "",
+  // };
+
+  // Do i need audio objects??
+  // Do i need audio objects??
+  // Do i need audio objects??
+  // Do i need audio objects??
   private readonly placeAudio: AudioInfo = {
     moveType: "place",
     sound: new Audio("./assets/audio/move-self.mp3"),
@@ -288,6 +313,7 @@ class GameBoard {
     isPromotedPawn?: boolean
   ): void {
     const pieceElement = document.createElement("img");
+    this.isBoardRotated && pieceElement.classList.add("rotate");
     pieceElement.dataset.x = String(piece.getRank());
     pieceElement.dataset.y = String(piece.getFile());
     pieceElement.setAttribute("name", "chess-piece");
@@ -387,50 +413,9 @@ class GameBoard {
 
   private getGeneratedMoves(
     currentPiece: Piece,
-    clonedBoard: (Piece | number)[][],
-    clonedHeatMap: number[][],
-    kingsPosition: [number, number]
+    clonedBoard: (Piece | number)[][]
   ): [number, number][] {
-    // const viableMoves: [number, number][] = [];
-    // if (currentPiece instanceof Pawn) {
-    //   const availableMoves = currentPiece
-    //     .getValidMoves(clonedBoard)
-    //     .concat(currentPiece.getValidAttackMoves(clonedBoard));
-    //   // const availableAttackMoves = currentPiece.getValidAttackMoves(
-    //   //   currentPiece.getRank(),
-    //   //   currentPiece.getFile(),
-    //   //   clonedBoard
-    //   // );
-    //   for (const moves of availableMoves) {
-    //     clonedHeatMap[moves[0]][moves[1]] = -1;
-    //     if (clonedHeatMap[kingsPosition[0]][kingsPosition[1]] !== -1) {
-    //       viableMoves.push(moves);
-    //     }
-    //   }
-    //   return viableMoves;
-    // } else {
-    //   const availableMoves = (currentPiece as incrementalPiece).getValidMoves(
-    //     clonedBoard
-    //   );
-    //   // if (currentPiece instanceof King) {
-    //   //   availableMoves = availableMoves.filter(
-    //   //     (move) => clonedHeatMap[move[0]][move[1]] === 0
-    //   //   );
-    //   //   if (availableMoves.length !== 0) {
-    //   //     console.log(clonedBoard);
-    //   //     console.log(availableMoves);
-    //   //   }
-    //   // }
-    //   // return availableMoves;
-    //   for (const moves of availableMoves) {
-    //     clonedHeatMap[moves[0]][moves[1]] = -1;
-    //     if (clonedHeatMap[kingsPosition[0]][kingsPosition[1]] !== -1) {
-    //       viableMoves.push(moves);
-    //     }
-    //   }
-    //   return viableMoves;
     return currentPiece.getValidMoves(clonedBoard);
-    // }
   }
   private generateEmptyHeatMap(): number[][] {
     const tempHeatMap: number[][] = new Array(this.BOARD_COLS);
@@ -531,10 +516,11 @@ class GameBoard {
   }
   private selectPiece(e: Event) {
     if (!e.target || !(e.target instanceof HTMLImageElement)) return;
+    console.log("Hello");
+    console.log(this);
     const currentX = Number(e.target.dataset.x);
     const currentY = Number(e.target.dataset.y);
     const newPiece = this.board[currentX][currentY];
-    this.viewBoard();
     if (
       this.selectedPiece instanceof Piece &&
       newPiece instanceof Piece &&
@@ -552,7 +538,6 @@ class GameBoard {
         newPiece instanceof Rook &&
         JSON.parse(newBoardElement.dataset.isMoveableTo as string)
       ) {
-        // Maybe change to castleKing, refactor function to contain all updates
         this.movePiece(e);
       } else {
         this.showAvailableMoves(e);
@@ -621,7 +606,8 @@ class GameBoard {
       !(
         (this.whitePlayersTurn && this.selectedPiece.getIsWhite()) ||
         (!this.whitePlayersTurn && !this.selectedPiece.getIsWhite())
-      )
+      ) ||
+      this.isPromoting
     ) {
       return;
     }
@@ -659,13 +645,10 @@ class GameBoard {
       }
       this.addLastMoveHighlight(oldPositionX, oldPositionY);
       this.clearSquare();
+      // Updates timer even when player hasnt promoted
       this.updateTimer();
       this.updateAvailableMoves();
     }
-    // this.unselectPiece();
-    // this.updateState();
-    // Use something like this for dragged element
-    // document.querySelector(".boobs")?.remove();
   }
   private castleKing(rookPiece: Rook): void {
     if (!this.selectedPiece) return;
@@ -775,7 +758,7 @@ class GameBoard {
   }
   private closePromotePawnModal(): void {
     document
-      .querySelectorAll(".modal-image")
+      .querySelectorAll(".modal--image")
       .forEach((modalImage) =>
         modalImage.removeEventListener("click", this.promotePawn.bind, true)
       );
@@ -795,7 +778,7 @@ class GameBoard {
     modal.style.left = `${modalPosY}00px`;
     modal.classList.add("visible-modal");
     document
-      .querySelectorAll(".modal-image")
+      .querySelectorAll(".modal--image")
       .forEach((modalImage) =>
         modalImage.addEventListener("click", (e) =>
           this.promotePawn(e, modalPosX, modalPosY)
@@ -853,13 +836,6 @@ class GameBoard {
     }
     return false;
   }
-
-  // private updatePieceMoves(piece: Piece): void {
-  //   piece.isWhite
-  //     ? this.whitePlayer.updatePiece(piece)
-  //     : this.blackPlayer.updatePiece(piece);
-  //   this.updatePieces(piece);
-  // }
   private addPiece(piece: Piece): void {
     this.getPieces().set(piece.getCoords(), piece);
   }
@@ -883,7 +859,6 @@ class GameBoard {
     //   : this.blackPlayer.updatePiece(piece);
   }
   private generateValidNextMoves() {
-    // this.generateHeatMaps();
     for (const piece of this.getPieces().values()) {
       const viableMoves: [number, number][] = [];
       for (const move of piece.getAvailableMoves()) {
@@ -907,12 +882,7 @@ class GameBoard {
             for (const square of row) {
               if (!(square instanceof Piece) || piece.isSameColor(square))
                 continue;
-              this.getGeneratedMoves(
-                square,
-                clonedBoard,
-                clonedMap,
-                kingsPosition
-              ).forEach((move) => {
+              this.getGeneratedMoves(square, clonedBoard).forEach((move) => {
                 clonedMap[move[0]][move[1]] = -1;
               });
             }
@@ -992,6 +962,8 @@ class GameBoard {
     this.getCastlableMoves();
     this.checkVictory();
     this.unselectPiece();
+    console.log(this.generateFEN());
+    // console.log(this.generateNotation());
   }
   private getCastlableMoves(): void {
     this.whitePlayer.canCastle(this.board);
@@ -1157,11 +1129,6 @@ class GameBoard {
       });
     });
   }
-  // private resetPlayerCaptures(): void {
-  //   document.querySelectorAll(".captured-pieces").forEach(element => {
-  //     element.childNodes.forEach
-  //   });
-  // }
   private changeCount(piece: Piece) {
     const capturedPiecesEl = document.getElementById(
       `captured--${piece.getID()}-${piece.getIsWhite() ? "w" : "b"}`
@@ -1187,12 +1154,20 @@ class GameBoard {
     this.updateCardValue(piece, this.isPromoting);
   }
   private updateCardValue(piece: Piece, isPromoting: boolean): void {
+    const playerColor = piece.getIsWhite() ? "w" : "b";
+    const enemyColor = !piece.getIsWhite() ? "w" : "b";
     const playerValueEl = document.querySelector(
-      `.player--card-points-${piece.getIsWhite() && !isPromoting ? "w" : "b"}`
+      `.player--card-points-${isPromoting ? enemyColor : playerColor}`
     ) as HTMLSpanElement;
     const enemyPlayerValueEl = document.querySelector(
-      `.player--card-points-${!piece.getIsWhite() && !isPromoting ? "w" : "b"}`
+      `.player--card-points-${isPromoting ? playerColor : enemyColor}`
     ) as HTMLSpanElement;
+    // const playerValueEl = document.querySelector(
+    //   `.player--card-points-${piece.getIsWhite() ? "w" : "b"}`
+    // ) as HTMLSpanElement;
+    // const enemyPlayerValueEl = document.querySelector(
+    //   `.player--card-points-${!piece.getIsWhite() ? "w" : "b"}`
+    // ) as HTMLSpanElement;
     playerValueEl.dataset.value = String(
       Number(playerValueEl.dataset.value!) + Number(piece.getPieceValue())
     );
@@ -1267,9 +1242,13 @@ class GameBoard {
       card.classList.toggle("player--card-top");
       card.classList.toggle("player--card-bottom");
     });
+    document
+      .querySelectorAll(".modal--image")
+      .forEach((image) => image.classList.toggle("modal--image-rotate"));
   }
   private restartGame() {
     if (this.isBoardRotated) this.rotateBoard();
+    if (this.isPromoting) this.closePromotePawnModal();
     this.resetPlayerTimers();
     this.initializeVariables();
     document

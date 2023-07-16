@@ -21,7 +21,20 @@ class GameBoard {
     constructor() {
         this.BOARD_COLS = 8;
         this.BOARD_ROWS = 8;
+        this.moveCount = 0;
         this.isPromoting = false;
+        // private notationBuilder: NotationBuilder = {
+        //   pieceChar: "",
+        //   pieceUnicode: "",
+        //   pieceDestination: "",
+        //   moveType: "",
+        //   uniqueFile: "",
+        //   uniqueRank: "",
+        // };
+        // Do i need audio objects??
+        // Do i need audio objects??
+        // Do i need audio objects??
+        // Do i need audio objects??
         this.placeAudio = {
             moveType: "place",
             sound: new Audio("./assets/audio/move-self.mp3"),
@@ -234,6 +247,7 @@ class GameBoard {
     }
     createChessElement(boardSquare, piece, isPromotedPawn) {
         const pieceElement = document.createElement("img");
+        this.isBoardRotated && pieceElement.classList.add("rotate");
         pieceElement.dataset.x = String(piece.getRank());
         pieceElement.dataset.y = String(piece.getFile());
         pieceElement.setAttribute("name", "chess-piece");
@@ -301,47 +315,8 @@ class GameBoard {
             ? this.whitePlayer.removePiece(piece)
             : this.blackPlayer.removePiece(piece);
     }
-    getGeneratedMoves(currentPiece, clonedBoard, clonedHeatMap, kingsPosition) {
-        // const viableMoves: [number, number][] = [];
-        // if (currentPiece instanceof Pawn) {
-        //   const availableMoves = currentPiece
-        //     .getValidMoves(clonedBoard)
-        //     .concat(currentPiece.getValidAttackMoves(clonedBoard));
-        //   // const availableAttackMoves = currentPiece.getValidAttackMoves(
-        //   //   currentPiece.getRank(),
-        //   //   currentPiece.getFile(),
-        //   //   clonedBoard
-        //   // );
-        //   for (const moves of availableMoves) {
-        //     clonedHeatMap[moves[0]][moves[1]] = -1;
-        //     if (clonedHeatMap[kingsPosition[0]][kingsPosition[1]] !== -1) {
-        //       viableMoves.push(moves);
-        //     }
-        //   }
-        //   return viableMoves;
-        // } else {
-        //   const availableMoves = (currentPiece as incrementalPiece).getValidMoves(
-        //     clonedBoard
-        //   );
-        //   // if (currentPiece instanceof King) {
-        //   //   availableMoves = availableMoves.filter(
-        //   //     (move) => clonedHeatMap[move[0]][move[1]] === 0
-        //   //   );
-        //   //   if (availableMoves.length !== 0) {
-        //   //     console.log(clonedBoard);
-        //   //     console.log(availableMoves);
-        //   //   }
-        //   // }
-        //   // return availableMoves;
-        //   for (const moves of availableMoves) {
-        //     clonedHeatMap[moves[0]][moves[1]] = -1;
-        //     if (clonedHeatMap[kingsPosition[0]][kingsPosition[1]] !== -1) {
-        //       viableMoves.push(moves);
-        //     }
-        //   }
-        //   return viableMoves;
+    getGeneratedMoves(currentPiece, clonedBoard) {
         return currentPiece.getValidMoves(clonedBoard);
-        // }
     }
     generateEmptyHeatMap() {
         const tempHeatMap = new Array(this.BOARD_COLS);
@@ -442,10 +417,11 @@ class GameBoard {
     selectPiece(e) {
         if (!e.target || !(e.target instanceof HTMLImageElement))
             return;
+        console.log("Hello");
+        console.log(this);
         const currentX = Number(e.target.dataset.x);
         const currentY = Number(e.target.dataset.y);
         const newPiece = this.board[currentX][currentY];
-        this.viewBoard();
         if (this.selectedPiece instanceof Piece &&
             newPiece instanceof Piece &&
             this.selectedPiece.getIsWhite() !== newPiece.getIsWhite() &&
@@ -458,7 +434,6 @@ class GameBoard {
             if (this.selectedPiece instanceof King &&
                 newPiece instanceof Rook &&
                 JSON.parse(newBoardElement.dataset.isMoveableTo)) {
-                // Maybe change to castleKing, refactor function to contain all updates
                 this.movePiece(e);
             }
             else {
@@ -507,7 +482,8 @@ class GameBoard {
             !this.selectedElement ||
             !e.target ||
             !((this.whitePlayersTurn && this.selectedPiece.getIsWhite()) ||
-                (!this.whitePlayersTurn && !this.selectedPiece.getIsWhite()))) {
+                (!this.whitePlayersTurn && !this.selectedPiece.getIsWhite())) ||
+            this.isPromoting) {
             return;
         }
         const newPositionX = Number(e.target.dataset.x);
@@ -536,13 +512,10 @@ class GameBoard {
             }
             this.addLastMoveHighlight(oldPositionX, oldPositionY);
             this.clearSquare();
+            // Updates timer even when player hasnt promoted
             this.updateTimer();
             this.updateAvailableMoves();
         }
-        // this.unselectPiece();
-        // this.updateState();
-        // Use something like this for dragged element
-        // document.querySelector(".boobs")?.remove();
     }
     castleKing(rookPiece) {
         if (!this.selectedPiece)
@@ -623,7 +596,7 @@ class GameBoard {
     }
     closePromotePawnModal() {
         document
-            .querySelectorAll(".modal-image")
+            .querySelectorAll(".modal--image")
             .forEach((modalImage) => modalImage.removeEventListener("click", this.promotePawn.bind, true));
         document.querySelectorAll(".modal").forEach((modal) => modal.classList.remove("visible-modal"));
         this.isPromoting = false;
@@ -636,7 +609,7 @@ class GameBoard {
         modal.style.left = `${modalPosY}00px`;
         modal.classList.add("visible-modal");
         document
-            .querySelectorAll(".modal-image")
+            .querySelectorAll(".modal--image")
             .forEach((modalImage) => modalImage.addEventListener("click", (e) => this.promotePawn(e, modalPosX, modalPosY)));
     }
     unselectPiece() {
@@ -689,12 +662,6 @@ class GameBoard {
         }
         return false;
     }
-    // private updatePieceMoves(piece: Piece): void {
-    //   piece.isWhite
-    //     ? this.whitePlayer.updatePiece(piece)
-    //     : this.blackPlayer.updatePiece(piece);
-    //   this.updatePieces(piece);
-    // }
     addPiece(piece) {
         this.getPieces().set(piece.getCoords(), piece);
     }
@@ -717,7 +684,6 @@ class GameBoard {
         //   : this.blackPlayer.updatePiece(piece);
     }
     generateValidNextMoves() {
-        // this.generateHeatMaps();
         for (const piece of this.getPieces().values()) {
             const viableMoves = [];
             for (const move of piece.getAvailableMoves()) {
@@ -739,7 +705,7 @@ class GameBoard {
                         for (const square of row) {
                             if (!(square instanceof Piece) || piece.isSameColor(square))
                                 continue;
-                            this.getGeneratedMoves(square, clonedBoard, clonedMap, kingsPosition).forEach((move) => {
+                            this.getGeneratedMoves(square, clonedBoard).forEach((move) => {
                                 clonedMap[move[0]][move[1]] = -1;
                             });
                         }
@@ -805,6 +771,8 @@ class GameBoard {
         this.getCastlableMoves();
         this.checkVictory();
         this.unselectPiece();
+        console.log(this.generateFEN());
+        // console.log(this.generateNotation());
     }
     getCastlableMoves() {
         this.whitePlayer.canCastle(this.board);
@@ -949,11 +917,6 @@ class GameBoard {
             });
         });
     }
-    // private resetPlayerCaptures(): void {
-    //   document.querySelectorAll(".captured-pieces").forEach(element => {
-    //     element.childNodes.forEach
-    //   });
-    // }
     changeCount(piece) {
         const capturedPiecesEl = document.getElementById(`captured--${piece.getID()}-${piece.getIsWhite() ? "w" : "b"}`);
         const oldClassName = capturedPiecesEl.classList[capturedPiecesEl.classList.length - 1];
@@ -971,8 +934,16 @@ class GameBoard {
         this.updateCardValue(piece, this.isPromoting);
     }
     updateCardValue(piece, isPromoting) {
-        const playerValueEl = document.querySelector(`.player--card-points-${piece.getIsWhite() && !isPromoting ? "w" : "b"}`);
-        const enemyPlayerValueEl = document.querySelector(`.player--card-points-${!piece.getIsWhite() && !isPromoting ? "w" : "b"}`);
+        const playerColor = piece.getIsWhite() ? "w" : "b";
+        const enemyColor = !piece.getIsWhite() ? "w" : "b";
+        const playerValueEl = document.querySelector(`.player--card-points-${isPromoting ? enemyColor : playerColor}`);
+        const enemyPlayerValueEl = document.querySelector(`.player--card-points-${isPromoting ? playerColor : enemyColor}`);
+        // const playerValueEl = document.querySelector(
+        //   `.player--card-points-${piece.getIsWhite() ? "w" : "b"}`
+        // ) as HTMLSpanElement;
+        // const enemyPlayerValueEl = document.querySelector(
+        //   `.player--card-points-${!piece.getIsWhite() ? "w" : "b"}`
+        // ) as HTMLSpanElement;
         playerValueEl.dataset.value = String(Number(playerValueEl.dataset.value) + Number(piece.getPieceValue()));
         if (Number(playerValueEl.dataset.value) >
             Number(enemyPlayerValueEl.dataset.value)) {
@@ -1036,10 +1007,15 @@ class GameBoard {
             card.classList.toggle("player--card-top");
             card.classList.toggle("player--card-bottom");
         });
+        document
+            .querySelectorAll(".modal--image")
+            .forEach((image) => image.classList.toggle("modal--image-rotate"));
     }
     restartGame() {
         if (this.isBoardRotated)
             this.rotateBoard();
+        if (this.isPromoting)
+            this.closePromotePawnModal();
         this.resetPlayerTimers();
         this.initializeVariables();
         document
