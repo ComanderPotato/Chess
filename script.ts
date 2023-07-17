@@ -16,14 +16,6 @@ interface Coords {
   y: number;
 }
 // Will need if I want to replay the sound of the move
-interface NotationBuilder {
-  pieceChar: string;
-  pieceUnicode: string;
-  pieceDestination: string;
-  moveType: string;
-  uniqueFile?: string;
-  uniqueRank?: string;
-}
 interface BoardState {
   board: (number | Piece)[][];
   boardStateFEN: string;
@@ -56,18 +48,7 @@ class GameBoard {
   private readonly BOARD_ROWS: number = 8;
   private moveCount: number = 0;
   private isPromoting: boolean = false;
-  // private notationBuilder: NotationBuilder = {
-  //   pieceChar: "",
-  //   pieceUnicode: "",
-  //   pieceDestination: "",
-  //   moveType: "",
-  //   uniqueFile: "",
-  //   uniqueRank: "",
-  // };
-
-  // Do i need audio objects??
-  // Do i need audio objects??
-  // Do i need audio objects??
+  private currentNotation: string = "";
   // Do i need audio objects??
   private readonly placeAudio: AudioInfo = {
     moveType: "place",
@@ -114,6 +95,33 @@ class GameBoard {
   //   "./assets/audio/promote.mp3"
   // );
   // private currentMoveSound: HTMLAudioElement | null;
+  private resetCurrentNotation(): void {
+    this.currentNotation = "";
+  }
+  private disambiguateNotation(
+    piece: Piece,
+    targetDestination: [rank: number, file: number]
+  ): void {
+    const playersPieces = piece.getIsWhite()
+      ? this.whitePlayer.getAvailablePieces()
+      : this.blackPlayer.getAvailablePieces();
+    let rank = "";
+    let file = "";
+    for (const pieces of playersPieces) {
+      if (piece.getCoords() === pieces[0]) continue;
+      else if (piece.getCharID() === pieces[1].getCharID()) {
+        for (const move of pieces[1].getAvailableMoves()) {
+          if (
+            move[0] === targetDestination[0] &&
+            move[1] === targetDestination[1]
+          ) {
+            if (piece.getRank() === pieces[1].getRank()) {
+            }
+          }
+        }
+      }
+    }
+  }
   constructor() {
     // this.placeAudio.dataset.notation = "";
     // this.captureAudio.dataset.notation = "x";
@@ -136,9 +144,13 @@ class GameBoard {
     this.totalPieces = new Map<string, Piece>();
     this.currentEnPassantPosition = "-";
     this.currentEnPassantPawn = "";
-
     this.clearSquare();
     this.updateTimer();
+  }
+  private getPlayersMoveCount(): [string, string] {
+    const whitePlayerMoveCount = String(Math.ceil(this.moveCount / 2));
+    const blackPlayerMoveCount = String(Math.floor(this.moveCount / 2));
+    return [whitePlayerMoveCount, blackPlayerMoveCount];
   }
   private createBoard(htmlElement: HTMLDivElement) {
     for (let x = 0; x < this.BOARD_COLS; x++) {
@@ -379,7 +391,7 @@ class GameBoard {
     this.closePromotePawnModal();
     this.promotedPawnTo = piece.getCharID().toUpperCase();
     this.promoteAudio.sound.play();
-    this.removePiece(pawnToPromote, false);
+    this.removePiece(pawnToPromote);
     this.createChessElement(boardSquare, piece, true);
     this.addPiece(piece);
     this.updateAvailableMoves();
@@ -397,10 +409,8 @@ class GameBoard {
       this.blackPlayer.getPlayersTimer().startTimer();
     }
   }
-  private removePiece(piece: Piece, changeCount: boolean = true): void {
-    if (changeCount) {
-      this.changeCount(piece);
-    }
+  private removePiece(piece: Piece): void {
+    this.changeCount(piece);
     (
       document.querySelector(
         `.chess-piece[data-x="${piece.getRank()}"][data-y="${piece.getFile()}"]`
@@ -622,6 +632,7 @@ class GameBoard {
       `[data-x="${newPositionX}"][data-y="${newPositionY}"]`
     ) as HTMLDivElement;
     if (JSON.parse(newBoardElement.dataset.isMoveableTo as string)) {
+      this.moveCount++;
       this.removeLastMoveHighlight();
       this.unsetEnPassant();
       this.updateState();

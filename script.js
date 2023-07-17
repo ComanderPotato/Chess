@@ -18,22 +18,35 @@ class GameBoard {
     //   "./assets/audio/promote.mp3"
     // );
     // private currentMoveSound: HTMLAudioElement | null;
+    resetCurrentNotation() {
+        this.currentNotation = "";
+    }
+    disambiguateNotation(piece, targetDestination) {
+        const playersPieces = piece.getIsWhite()
+            ? this.whitePlayer.getAvailablePieces()
+            : this.blackPlayer.getAvailablePieces();
+        let rank = "";
+        let file = "";
+        for (const pieces of playersPieces) {
+            if (piece.getCoords() === pieces[0])
+                continue;
+            else if (piece.getCharID() === pieces[1].getCharID()) {
+                for (const move of pieces[1].getAvailableMoves()) {
+                    if (move[0] === targetDestination[0] &&
+                        move[1] === targetDestination[1]) {
+                        if (piece.getRank() === pieces[1].getRank()) {
+                        }
+                    }
+                }
+            }
+        }
+    }
     constructor() {
         this.BOARD_COLS = 8;
         this.BOARD_ROWS = 8;
         this.moveCount = 0;
         this.isPromoting = false;
-        // private notationBuilder: NotationBuilder = {
-        //   pieceChar: "",
-        //   pieceUnicode: "",
-        //   pieceDestination: "",
-        //   moveType: "",
-        //   uniqueFile: "",
-        //   uniqueRank: "",
-        // };
-        // Do i need audio objects??
-        // Do i need audio objects??
-        // Do i need audio objects??
+        this.currentNotation = "";
         // Do i need audio objects??
         this.placeAudio = {
             moveType: "place",
@@ -86,6 +99,11 @@ class GameBoard {
         this.currentEnPassantPawn = "";
         this.clearSquare();
         this.updateTimer();
+    }
+    getPlayersMoveCount() {
+        const whitePlayerMoveCount = String(Math.ceil(this.moveCount / 2));
+        const blackPlayerMoveCount = String(Math.floor(this.moveCount / 2));
+        return [whitePlayerMoveCount, blackPlayerMoveCount];
     }
     createBoard(htmlElement) {
         for (let x = 0; x < this.BOARD_COLS; x++) {
@@ -287,7 +305,7 @@ class GameBoard {
         this.closePromotePawnModal();
         this.promotedPawnTo = piece.getCharID().toUpperCase();
         this.promoteAudio.sound.play();
-        this.removePiece(pawnToPromote, false);
+        this.removePiece(pawnToPromote);
         this.createChessElement(boardSquare, piece, true);
         this.addPiece(piece);
         this.updateAvailableMoves();
@@ -306,10 +324,8 @@ class GameBoard {
             this.blackPlayer.getPlayersTimer().startTimer();
         }
     }
-    removePiece(piece, changeCount = true) {
-        if (changeCount) {
-            this.changeCount(piece);
-        }
+    removePiece(piece) {
+        this.changeCount(piece);
         document.querySelector(`.chess-piece[data-x="${piece.getRank()}"][data-y="${piece.getFile()}"]`).remove();
         this.board[piece.getRank()][piece.getFile()] = 0;
         piece.getIsWhite()
@@ -495,6 +511,7 @@ class GameBoard {
             return;
         const newBoardElement = document.querySelector(`[data-x="${newPositionX}"][data-y="${newPositionY}"]`);
         if (JSON.parse(newBoardElement.dataset.isMoveableTo)) {
+            this.moveCount++;
             this.removeLastMoveHighlight();
             this.unsetEnPassant();
             this.updateState();
