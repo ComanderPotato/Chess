@@ -291,6 +291,7 @@ class GameBoard {
         this.createChessElement(boardSquare, piece, true);
         this.addPiece(piece);
         this.updateAvailableMoves();
+        this.updateTimer();
         if (this.isChecked()) {
             this.checkedAudio.sound.play();
         }
@@ -513,7 +514,8 @@ class GameBoard {
             this.addLastMoveHighlight(oldPositionX, oldPositionY);
             this.clearSquare();
             // Updates timer even when player hasnt promoted
-            this.updateTimer();
+            if (!this.isPromoting)
+                this.updateTimer();
             this.updateAvailableMoves();
         }
     }
