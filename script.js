@@ -18,27 +18,47 @@ class GameBoard {
     //   "./assets/audio/promote.mp3"
     // );
     // private currentMoveSound: HTMLAudioElement | null;
-    resetCurrentNotation() {
-        this.currentNotation = "";
+    resetBuilder() {
+        for (let prop in this.notationBuilder) {
+            if (typeof this.notationBuilder[prop] === "boolean")
+                this.notationBuilder[prop] = false;
+            if (typeof this.notationBuilder[prop] === "string")
+                this.notationBuilder[prop] = "";
+        }
     }
-    disambiguateNotation(piece, targetDestination) {
+    disambiguateNotation(piece, destination) {
         const playersPieces = piece.getIsWhite()
             ? this.whitePlayer.getAvailablePieces()
             : this.blackPlayer.getAvailablePieces();
-        let rank = "";
-        let file = "";
+        let sameRank = false;
+        let sameFile = false;
         for (const pieces of playersPieces) {
-            if (piece.getCoords() === pieces[0])
+            if (piece.getCoords() === pieces[1].getCoords())
                 continue;
-            else if (piece.getCharID() === pieces[1].getCharID()) {
-                for (const move of pieces[1].getAvailableMoves()) {
-                    if (move[0] === targetDestination[0] &&
-                        move[1] === targetDestination[1]) {
+            if (piece.getCharID() === pieces[1].getCharID()) {
+                for (const moves of pieces[1].getAvailableMoves()) {
+                    if (destination === getCoords(moves[0], moves[1])) {
                         if (piece.getRank() === pieces[1].getRank()) {
+                            sameRank = true;
+                        }
+                        if (piece.getFile() === pieces[1].getFile()) {
+                            sameFile = true;
                         }
                     }
                 }
             }
+        }
+        if (sameRank && sameFile) {
+            return piece.getCoords();
+        }
+        else if (sameRank) {
+            return getYAxis(piece.getFile());
+        }
+        else if (sameFile) {
+            return getXAxis(piece.getRank());
+        }
+        else {
+            return "";
         }
     }
     constructor() {
@@ -46,7 +66,18 @@ class GameBoard {
         this.BOARD_ROWS = 8;
         this.moveCount = 0;
         this.isPromoting = false;
-        this.currentNotation = "";
+        this.notationBuilder = {
+            capture: false,
+            checked: false,
+            checkMate: false,
+            castleKingSide: false,
+            castleQueenSide: false,
+            promotion: false,
+            pieceCharID: "",
+            pieceUnicodeID: "",
+            origin: "",
+            destination: "",
+        };
         // Do i need audio objects??
         this.placeAudio = {
             moveType: "place",
@@ -498,8 +529,10 @@ class GameBoard {
             !this.selectedPiece ||
             !this.selectedElement ||
             !e.target ||
-            !((this.whitePlayersTurn && this.selectedPiece.getIsWhite()) ||
-                (!this.whitePlayersTurn && !this.selectedPiece.getIsWhite())) ||
+            // !(
+            //   (this.whitePlayersTurn && this.selectedPiece.getIsWhite()) ||
+            //   (!this.whitePlayersTurn && !this.selectedPiece.getIsWhite())
+            // ) ||
             this.isPromoting) {
             return;
         }
@@ -525,6 +558,7 @@ class GameBoard {
             else {
                 this.whitePlayer.setIsChecked(false);
                 this.blackPlayer.setIsChecked(false);
+                console.log(this.disambiguateNotation(this.board[oldPositionX][oldPositionY], getCoords(newPositionX, newPositionY)));
                 this.currentMoveSound = this.movePieceOnBoard(oldPositionX, oldPositionY, newPositionX, newPositionY);
                 this.currentMoveSound.sound.play();
             }

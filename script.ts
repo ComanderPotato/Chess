@@ -23,6 +23,19 @@ interface BoardState {
   moveNotation: string;
   previousMove: string;
 }
+interface NotationBuilder {
+  [index: string]: boolean | string;
+  capture: boolean;
+  checked: boolean;
+  checkMate: boolean;
+  castleKingSide: boolean;
+  castleQueenSide: boolean;
+  promotion: boolean;
+  pieceCharID: string;
+  pieceUnicodeID: string;
+  origin: string;
+  destination: string;
+}
 interface AudioInfo {
   moveType: string;
   sound: HTMLAudioElement;
@@ -48,7 +61,18 @@ class GameBoard {
   private readonly BOARD_ROWS: number = 8;
   private moveCount: number = 0;
   private isPromoting: boolean = false;
-  private currentNotation: string = "";
+  private notationBuilder: NotationBuilder = {
+    capture: false,
+    checked: false,
+    checkMate: false,
+    castleKingSide: false,
+    castleQueenSide: false,
+    promotion: false,
+    pieceCharID: "",
+    pieceUnicodeID: "",
+    origin: "",
+    destination: "",
+  };
   // Do i need audio objects??
   private readonly placeAudio: AudioInfo = {
     moveType: "place",
@@ -95,31 +119,45 @@ class GameBoard {
   //   "./assets/audio/promote.mp3"
   // );
   // private currentMoveSound: HTMLAudioElement | null;
-  private resetCurrentNotation(): void {
-    this.currentNotation = "";
+  private resetBuilder(): void {
+    for (let prop in this.notationBuilder) {
+      if (typeof this.notationBuilder[prop] === "boolean")
+        this.notationBuilder[prop] = false;
+      if (typeof this.notationBuilder[prop] === "string")
+        this.notationBuilder[prop] = "";
+    }
   }
-  private disambiguateNotation(
-    piece: Piece,
-    targetDestination: [rank: number, file: number]
-  ): void {
+
+  private disambiguateNotation(piece: Piece, destination: string): string {
     const playersPieces = piece.getIsWhite()
       ? this.whitePlayer.getAvailablePieces()
       : this.blackPlayer.getAvailablePieces();
-    let rank = "";
-    let file = "";
+
+    let sameRank = false;
+    let sameFile = false;
     for (const pieces of playersPieces) {
-      if (piece.getCoords() === pieces[0]) continue;
-      else if (piece.getCharID() === pieces[1].getCharID()) {
-        for (const move of pieces[1].getAvailableMoves()) {
-          if (
-            move[0] === targetDestination[0] &&
-            move[1] === targetDestination[1]
-          ) {
+      if (piece.getCoords() === pieces[1].getCoords()) continue;
+      if (piece.getCharID() === pieces[1].getCharID()) {
+        for (const moves of pieces[1].getAvailableMoves()) {
+          if (destination === getCoords(moves[0], moves[1])) {
             if (piece.getRank() === pieces[1].getRank()) {
+              sameRank = true;
+            }
+            if (piece.getFile() === pieces[1].getFile()) {
+              sameFile = true;
             }
           }
         }
       }
+    }
+    if (sameRank && sameFile) {
+      return piece.getCoords();
+    } else if (sameRank) {
+      return getYAxis(piece.getFile());
+    } else if (sameFile) {
+      return getXAxis(piece.getRank());
+    } else {
+      return "";
     }
   }
   constructor() {
@@ -614,10 +652,10 @@ class GameBoard {
       !this.selectedPiece ||
       !this.selectedElement ||
       !e.target ||
-      !(
-        (this.whitePlayersTurn && this.selectedPiece.getIsWhite()) ||
-        (!this.whitePlayersTurn && !this.selectedPiece.getIsWhite())
-      ) ||
+      // !(
+      //   (this.whitePlayersTurn && this.selectedPiece.getIsWhite()) ||
+      //   (!this.whitePlayersTurn && !this.selectedPiece.getIsWhite())
+      // ) ||
       this.isPromoting
     ) {
       return;
@@ -647,6 +685,12 @@ class GameBoard {
       } else {
         this.whitePlayer.setIsChecked(false);
         this.blackPlayer.setIsChecked(false);
+        console.log(
+          this.disambiguateNotation(
+            this.board[oldPositionX][oldPositionY] as Piece,
+            getCoords(newPositionX, newPositionY)
+          )
+        );
         this.currentMoveSound = this.movePieceOnBoard(
           oldPositionX,
           oldPositionY,
