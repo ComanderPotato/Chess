@@ -135,14 +135,12 @@ class GameBoard {
 
     let sameRank = false;
     let sameFile = false;
+    let found = false;
     for (const pieces of playersPieces) {
       if (piece.getCoords() === pieces[1].getCoords()) continue;
       if (piece.getCharID() === pieces[1].getCharID()) {
         for (const moves of pieces[1].getAvailableMoves()) {
           if (destination === getCoords(moves[0], moves[1])) {
-            if (piece.getRank() === pieces[1].getRank()) {
-              sameRank = true;
-            }
             if (piece.getFile() === pieces[1].getFile()) {
               sameFile = true;
             }
@@ -150,6 +148,12 @@ class GameBoard {
         }
       }
     }
+    // console.log(sameRank, sameFile);
+    // if (found) {
+    //   if (!sameFile) {
+    //     return getXAxis(piece.getRank());
+    //   }
+    // }
     if (sameRank && sameFile) {
       return piece.getCoords();
     } else if (sameRank) {
@@ -285,7 +289,8 @@ class GameBoard {
     return fenString;
   }
   private createChessPieces(): void {
-    const pattern = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+    // const pattern = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+    const pattern = "1R4QQ/R1R4Q/8/6pP/5P1P/8/NK1k4/1N1N4";
     let x = 0;
     let y = 0;
     for (let c of pattern) {
@@ -319,6 +324,7 @@ class GameBoard {
             break;
           case "k":
             piece = new King(x, y, isWhite, "king", coords);
+            this.updateKingPosition(piece);
             break;
           case "p":
             piece = new Pawn(x, y, isWhite, "pawn", coords);
@@ -565,8 +571,7 @@ class GameBoard {
   }
   private selectPiece(e: Event) {
     if (!e.target || !(e.target instanceof HTMLImageElement)) return;
-    console.log("Hello");
-    console.log(this);
+    console.log(this.board);
     const currentX = Number(e.target.dataset.x);
     const currentY = Number(e.target.dataset.y);
     const newPiece = this.board[currentX][currentY];
@@ -1015,10 +1020,10 @@ class GameBoard {
     this.whitePlayer.updateMoves();
     this.blackPlayer.updateMoves();
     // this.unsetEnPassant();
-    this.getCastlableMoves();
+    // this.getCastlableMoves();
     this.checkVictory();
     this.unselectPiece();
-    console.log(this.generateFEN());
+    // console.log(this.generateFEN());
     // console.log(this.generateNotation());
   }
   private getCastlableMoves(): void {
