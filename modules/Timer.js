@@ -44,4 +44,3 @@ export default class Timer {
         this.stopTimer();
     }
 }
-// const timer = new Timer(60);

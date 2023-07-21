@@ -28,9 +28,12 @@ interface NotationBuilder {
   capture: boolean;
   checked: boolean;
   checkMate: boolean;
+  castled: boolean;
   castleKingSide: boolean;
   castleQueenSide: boolean;
   promotion: boolean;
+  promotedPieceCharID: string;
+  promotedPieceUnicodeID: string;
   pieceCharID: string;
   pieceUnicodeID: string;
   origin: string;
@@ -65,9 +68,12 @@ class GameBoard {
     capture: false,
     checked: false,
     checkMate: false,
+    castled: false,
     castleKingSide: false,
     castleQueenSide: false,
     promotion: false,
+    promotedPieceCharID: "",
+    promotedPieceUnicodeID: "",
     pieceCharID: "",
     pieceUnicodeID: "",
     origin: "",
@@ -119,7 +125,7 @@ class GameBoard {
   //   "./assets/audio/promote.mp3"
   // );
   // private currentMoveSound: HTMLAudioElement | null;
-  private resetBuilder(): void {
+  private resetNotationBuilder(): void {
     for (let prop in this.notationBuilder) {
       if (typeof this.notationBuilder[prop] === "boolean")
         this.notationBuilder[prop] = false;
@@ -132,7 +138,6 @@ class GameBoard {
     const playersPieces = piece.getIsWhite()
       ? this.whitePlayer.getAvailablePieces()
       : this.blackPlayer.getAvailablePieces();
-
     let sameRank = false;
     let sameFile = false;
     let found = false;
@@ -141,36 +146,33 @@ class GameBoard {
       if (piece.getCharID() === pieces[1].getCharID()) {
         for (const moves of pieces[1].getAvailableMoves()) {
           if (destination === getCoords(moves[0], moves[1])) {
-            if (piece.getFile() === pieces[1].getFile()) {
-              sameFile = true;
+            found = true;
+            if (
+              piece.getRank() !== pieces[1].getRank() ||
+              piece.getFile() !== pieces[1].getFile()
+            ) {
+              if (piece.getRank() === pieces[1].getRank()) {
+                sameRank = true;
+              }
+              if (piece.getFile() === pieces[1].getFile()) {
+                sameFile = true;
+              }
             }
           }
         }
       }
     }
-    // console.log(sameRank, sameFile);
-    // if (found) {
-    //   if (!sameFile) {
-    //     return getXAxis(piece.getRank());
-    //   }
-    // }
     if (sameRank && sameFile) {
       return piece.getCoords();
-    } else if (sameRank) {
-      return getYAxis(piece.getFile());
     } else if (sameFile) {
       return getXAxis(piece.getRank());
+    } else if (sameRank || found) {
+      return getYAxis(piece.getFile());
     } else {
       return "";
     }
   }
   constructor() {
-    // this.placeAudio.dataset.notation = "";
-    // this.captureAudio.dataset.notation = "x";
-    // this.checkedAudio.dataset.notation = "+";
-    // this.castleAudio.dataset.notationKingSide = "0-0";
-    // this.castleAudio.dataset.notationQueenSide = "0-0-0";
-    // this.promoteAudio.dataset.notation = "=";
     this.initializeVariables();
     this.createGame();
   }
@@ -289,8 +291,8 @@ class GameBoard {
     return fenString;
   }
   private createChessPieces(): void {
-    // const pattern = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
-    const pattern = "1R4QQ/R1R4Q/8/6pP/5P1P/8/NK1k4/1N1N4";
+    const pattern = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+    // const pattern = "1R4QQ/R1R4Q/8/6pP/5P1P/8/NK1k4/1N1N4";
     let x = 0;
     let y = 0;
     for (let c of pattern) {
@@ -324,10 +326,15 @@ class GameBoard {
             break;
           case "k":
             piece = new King(x, y, isWhite, "king", coords);
-            this.updateKingPosition(piece);
+            if (isWhite) {
+              this.whitePlayer.setKingsPosition(x, y);
+            } else {
+              this.blackPlayer.setKingsPosition(x, y);
+            }
             break;
           case "p":
             piece = new Pawn(x, y, isWhite, "pawn", coords);
+
             break;
           default:
             return;
@@ -431,6 +438,9 @@ class GameBoard {
     const boardSquare = document.querySelector(
       `.square[data-x="${pawnX}"][data-y="${pawnY}"]`
     ) as HTMLDivElement;
+    this.notationBuilder.promotion = true;
+    this.notationBuilder.promotedPieceCharID = piece.getCharID().toUpperCase();
+    this.notationBuilder.promotedPieceUnicodeID = piece.getFigurine();
     this.updateCardValue(piece, this.isPromoting);
     this.closePromotePawnModal();
     this.promotedPawnTo = piece.getCharID().toUpperCase();
@@ -438,11 +448,11 @@ class GameBoard {
     this.removePiece(pawnToPromote);
     this.createChessElement(boardSquare, piece, true);
     this.addPiece(piece);
-    this.updateAvailableMoves();
     this.updateTimer();
     if (this.isChecked()) {
       this.checkedAudio.sound.play();
     }
+    this.updateAvailableMoves();
   }
   private updateTimer() {
     if (this.whitePlayersTurn) {
@@ -570,8 +580,8 @@ class GameBoard {
     console.log(this.board);
   }
   private selectPiece(e: Event) {
-    if (!e.target || !(e.target instanceof HTMLImageElement)) return;
     console.log(this.board);
+    if (!e.target || !(e.target instanceof HTMLImageElement)) return;
     const currentX = Number(e.target.dataset.x);
     const currentY = Number(e.target.dataset.y);
     const newPiece = this.board[currentX][currentY];
@@ -657,10 +667,10 @@ class GameBoard {
       !this.selectedPiece ||
       !this.selectedElement ||
       !e.target ||
-      // !(
-      //   (this.whitePlayersTurn && this.selectedPiece.getIsWhite()) ||
-      //   (!this.whitePlayersTurn && !this.selectedPiece.getIsWhite())
-      // ) ||
+      !(
+        (this.whitePlayersTurn && this.selectedPiece.getIsWhite()) ||
+        (!this.whitePlayersTurn && !this.selectedPiece.getIsWhite())
+      ) ||
       this.isPromoting
     ) {
       return;
@@ -680,6 +690,10 @@ class GameBoard {
       this.unsetEnPassant();
       this.updateState();
       this.whitePlayersTurn = !this.whitePlayersTurn;
+      this.updateNotationPieceInfo(
+        this.board[oldPositionX][oldPositionY] as Piece,
+        getCoords(newPositionX, newPositionY)
+      );
       if (
         this.selectedPiece instanceof King &&
         this.board[newPositionX][newPositionY] instanceof Rook &&
@@ -690,12 +704,7 @@ class GameBoard {
       } else {
         this.whitePlayer.setIsChecked(false);
         this.blackPlayer.setIsChecked(false);
-        console.log(
-          this.disambiguateNotation(
-            this.board[oldPositionX][oldPositionY] as Piece,
-            getCoords(newPositionX, newPositionY)
-          )
-        );
+
         this.currentMoveSound = this.movePieceOnBoard(
           oldPositionX,
           oldPositionY,
@@ -710,6 +719,15 @@ class GameBoard {
       if (!this.isPromoting) this.updateTimer();
       this.updateAvailableMoves();
     }
+  }
+  private updateNotationPieceInfo(piece: Piece, destination: string): void {
+    const pieceChar = piece.getCharID().toUpperCase();
+    if (pieceChar !== "P") {
+      this.notationBuilder.pieceCharID = piece.getCharID().toUpperCase();
+    }
+    this.notationBuilder.pieceUnicodeID = piece.getFigurine();
+    this.notationBuilder.origin = this.disambiguateNotation(piece, destination);
+    this.notationBuilder.destination = destination;
   }
   private castleKing(rookPiece: Rook): void {
     if (!this.selectedPiece) return;
@@ -733,7 +751,12 @@ class GameBoard {
       const newRooksPositionX =
         (rookY > this.selectedPiece.getFile() ? -1 : 1) + newKingsPositionY;
       this.movePieceOnBoard(rookX, rookY, rookX, newRooksPositionX);
-
+      this.notationBuilder.castled = true;
+      if (rookY === 0) {
+        this.notationBuilder.castleQueenSide = true;
+      } else {
+        this.notationBuilder.castleKingSide = true;
+      }
       rookPiece.setHadFirstMove();
       (this.selectedPiece as King).setHadFirstMove();
 
@@ -755,6 +778,7 @@ class GameBoard {
     if (currentPiece instanceof Piece) {
       this.removePiece(currentPiece);
       moveSound = this.captureAudio;
+      this.notationBuilder.capture = true;
     }
     this.board[newPositionX][newPositionY] = boardSquare;
     this.board[oldPositionX][oldPositionY] = 0;
@@ -800,6 +824,7 @@ class GameBoard {
           const pawn = this.board[oldPositionX][newPositionY] as Piece;
           this.removePiece(pawn);
           moveSound = this.captureAudio;
+          this.notationBuilder.capture = true;
         }
       } else if (boardSquare instanceof King) {
         this.updateKingPosition(boardSquare);
@@ -890,6 +915,7 @@ class GameBoard {
             this.whitePlayersTurn
               ? this.whitePlayer.setIsChecked(true)
               : this.blackPlayer.setIsChecked(true);
+            this.notationBuilder.checked = true;
             return true;
           }
         }
@@ -1022,9 +1048,32 @@ class GameBoard {
     // this.unsetEnPassant();
     // this.getCastlableMoves();
     this.checkVictory();
+    this.createNotation();
     this.unselectPiece();
     // console.log(this.generateFEN());
     // console.log(this.generateNotation());
+  }
+  private createNotation() {
+    if (this.notationBuilder.castled) {
+      if (this.notationBuilder.castleKingSide) {
+        console.log("O-O");
+      } else {
+        console.log("O-O-O");
+      }
+    } else {
+      const capture = this.notationBuilder.capture ? "x" : "";
+      const checked = this.notationBuilder.checked
+        ? this.notationBuilder.checkMate
+          ? "#"
+          : "+"
+        : "";
+      const promoted = this.notationBuilder.promotion
+        ? `=${this.notationBuilder.promotedPieceCharID}`
+        : "";
+      const notation = `${this.notationBuilder.pieceCharID}${this.notationBuilder.origin}${capture}${this.notationBuilder.destination}${promoted}${checked}`;
+      console.log(notation);
+    }
+    this.resetNotationBuilder();
   }
   private getCastlableMoves(): void {
     this.whitePlayer.canCastle(this.board);
@@ -1362,12 +1411,16 @@ class GameBoard {
     if (this.whitePlayer.getAvailableMoves() === 0) {
       if (this.whitePlayer.getIsChecked()) {
         winner!.textContent = "Black Win";
+        this.notationBuilder.checkMate = true;
+        console.log("Hello");
       } else {
         winner!.textContent = "Stale mate";
       }
     } else if (this.blackPlayer.getAvailableMoves() === 0) {
       if (this.blackPlayer.getIsChecked()) {
         winner!.textContent = "White Win";
+        console.log("Hello");
+        this.notationBuilder.checkMate = true;
       } else {
         winner!.textContent = "Stale mate";
       }
@@ -1379,15 +1432,6 @@ class GameBoard {
       ) {
         winner!.textContent = "Insufficient material";
       } else {
-        // else if (whiteArmySize <= 3 || blackArmySize <= 3) {
-        /*
-      King vs king
-      King + minor (bishop or knight) piece vs king
-      Lone king vs all the pieces
-      King + two knights vs king
-      King + minor piece vs king + minor piece
-      */
-
         let whiteBishopCount = 0;
         let blackBishopCount = 0;
         let whiteKnightCount = 0;
@@ -1425,23 +1469,6 @@ class GameBoard {
         ) {
           winner!.textContent = "Insufficient material";
         }
-        //   if (
-        //     (whiteMinorCount === 1 && blackMinorCount === 0) ||
-        //     (whiteMinorCount === 0 && blackMinorCount === 1)
-        //   ) {
-        //     winner!.textContent = "Insufficient material";
-        //   } else if (
-        //     (whiteKnightCount === 2 &&
-        //       whiteBishopCount === 0 &&
-        //       blackMinorCount === 0) ||
-        //     (blackKnightCount === 2 &&
-        //       blackBishopCount === 0 &&
-        //       whiteMinorCount === 0)
-        //   ) {
-        //     winner!.textContent = "Insufficient material";
-        //   } else if (whiteMinorCount === 1 && blackMinorCount === 1) {
-        //     winner!.textContent = "Insufficient material";
-        //   }
       }
     }
   }
