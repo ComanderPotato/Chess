@@ -17,11 +17,18 @@ interface Coords {
 }
 // Will need if I want to replay the sound of the move
 interface BoardState {
-  board: (number | Piece)[][];
   boardStateFEN: string;
+  playersMove: string;
+  castlableMoves: string;
+  enPassantPiece: string;
+  halfMove: number;
+  fullMove: number;
   moveSound: HTMLAudioElement;
   moveNotation: string;
   previousMove: string;
+  currentMove: string;
+  capturedPieces: string[];
+  promotedPieces: string[];
 }
 interface NotationBuilder {
   [index: string]: boolean | string;
@@ -39,14 +46,6 @@ interface NotationBuilder {
   origin: string;
   destination: string;
 }
-interface AudioInfo {
-  moveType: string;
-  sound: HTMLAudioElement;
-  notation?: string;
-  notationQueenSide?: string;
-  notationKingSide?: string;
-  isKingSide?: boolean;
-}
 class GameBoard {
   private whitePlayer: Player;
   private blackPlayer: Player;
@@ -58,12 +57,17 @@ class GameBoard {
   private whitePlayersTurn: boolean;
   private totalPieces: Map<string, Piece>;
   private isBoardRotated: boolean;
-  private currentEnPassantPosition: string;
+  private currentEnPassantPosition: string = "-";
   private currentEnPassantPawn: string;
   private readonly BOARD_COLS: number = 8;
   private readonly BOARD_ROWS: number = 8;
-  private moveCount: number = 0;
+  private readonly INITIAL_PATTERN: string =
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+
+  private halfMoveCount: number = 0;
+  private fullMoveCount: number = 1;
   private isPromoting: boolean = false;
+
   private notationBuilder: NotationBuilder = {
     capture: false,
     checked: false,
@@ -79,52 +83,39 @@ class GameBoard {
     origin: "",
     destination: "",
   };
-  // Do i need audio objects??
-  private readonly placeAudio: AudioInfo = {
-    moveType: "place",
-    sound: new Audio("./assets/audio/move-self.mp3"),
-    notation: "",
-  };
-  private readonly captureAudio: AudioInfo = {
-    moveType: "capture",
-    sound: new Audio("./assets/audio/capture.mp3"),
-    notation: "x",
-  };
-  private readonly checkedAudio: AudioInfo = {
-    moveType: "checked",
-    sound: new Audio("./assets/audio/move-check.mp3"),
-    notation: "+",
-  };
-  private readonly castleAudio: AudioInfo = {
-    moveType: "castle",
-    sound: new Audio("./assets/audio/castle.mp3"),
-    notationKingSide: "O-O",
-    notationQueenSide: "O-O-O",
-  };
 
-  private readonly promoteAudio: AudioInfo = {
-    moveType: "promote",
-    sound: new Audio("./assets/audio/promote.mp3"),
-    notation: "=",
-  };
-  private currentMoveSound: AudioInfo = this.placeAudio;
+  // private currentMoveSound: AudioInfo = this.placeAudio;
   private promotedPawnTo: string = "";
-  // private readonly placeAudio: HTMLAudioElement = new Audio(
-  //   "./assets/audio/move-self.mp3"
-  // );
-  // private readonly captureAudio: HTMLAudioElement = new Audio(
-  //   "./assets/audio/capture.mp3"
-  // );
-  // private readonly checkedAudio: HTMLAudioElement = new Audio(
-  //   "./assets/audio/move-check.mp3"
-  // );
-  // private readonly castleAudio: HTMLAudioElement = new Audio(
-  //   "./assets/audio/castle.mp3"
-  // );
-  // private readonly promoteAudio: HTMLAudioElement = new Audio(
-  //   "./assets/audio/promote.mp3"
-  // );
+  private readonly placeAudio: HTMLAudioElement = new Audio(
+    "./assets/audio/move-self.mp3"
+  );
+  private readonly captureAudio: HTMLAudioElement = new Audio(
+    "./assets/audio/capture.mp3"
+  );
+  private readonly checkedAudio: HTMLAudioElement = new Audio(
+    "./assets/audio/move-check.mp3"
+  );
+  private readonly castleAudio: HTMLAudioElement = new Audio(
+    "./assets/audio/castle.mp3"
+  );
+  private readonly promoteAudio: HTMLAudioElement = new Audio(
+    "./assets/audio/promote.mp3"
+  );
   // private currentMoveSound: HTMLAudioElement | null;
+  private boardState: BoardState = {
+    boardStateFEN: "",
+    playersMove: "w",
+    castlableMoves: "",
+    enPassantPiece: this.currentEnPassantPosition,
+    halfMove: this.halfMoveCount,
+    fullMove: this.fullMoveCount,
+    moveSound: this.placeAudio,
+    moveNotation: "",
+    previousMove: "",
+    currentMove: "",
+    capturedPieces: [],
+    promotedPieces: [],
+  };
   private resetNotationBuilder(): void {
     for (let prop in this.notationBuilder) {
       if (typeof this.notationBuilder[prop] === "boolean")
@@ -133,7 +124,98 @@ class GameBoard {
         this.notationBuilder[prop] = "";
     }
   }
+  private setBoardStateNotationProperties(): void {
+    this.boardState.boardStateFEN = this.generateFEN();
+    this.boardState.playersMove = this.whitePlayersTurn ? "w" : "b";
+    this.boardState.castlableMoves = this.getCastlableMovesNotation();
+    this.boardState.enPassantPiece = this.currentEnPassantPosition;
+    this.boardState.halfMove = this.halfMoveCount;
+    this.boardState.fullMove = this.fullMoveCount;
+    this.boardState.moveSound = this.getMoveSound();
+    this.boardState.moveNotation = this.createNotation();
+  }
 
+  private getMoveSound(): HTMLAudioElement {
+    if (this.notationBuilder.checkMate || this.notationBuilder.checked) {
+      return this.checkedAudio;
+    } else if (this.notationBuilder.capture) {
+      return this.captureAudio;
+    } else if (this.notationBuilder.promotion) {
+      return this.promoteAudio;
+    } else if (this.notationBuilder.castled) {
+      return this.castleAudio;
+    } else {
+      return this.placeAudio;
+    }
+  }
+  private getCastlableMovesNotation(): string {
+    let whiteCastlable = "";
+    let blackCastlable = "";
+    for (const row of this.board) {
+      for (const piece of row) {
+        if (piece instanceof King) {
+          if (piece.getCanCastleKingSide()) {
+            piece.getIsWhite()
+              ? (whiteCastlable += "K")
+              : (blackCastlable += "k");
+          }
+          if (piece.getCanCastleQueenSide()) {
+            piece.getIsWhite()
+              ? (whiteCastlable += "Q")
+              : (blackCastlable += "q");
+          }
+        } else {
+          continue;
+        }
+      }
+    }
+    return whiteCastlable.length > 0 && blackCastlable.length > 0
+      ? `${whiteCastlable}${blackCastlable}`
+      : "-";
+  }
+  private generateFEN(): string {
+    let fenString = "";
+    let whiteCastlable = "";
+    let blackCastlable = "";
+    const playersTurn = this.whitePlayersTurn ? "w" : "b";
+    for (const row of this.board) {
+      for (const piece of row) {
+        if (piece instanceof Piece) {
+          fenString += piece.getCharID();
+          if (piece instanceof King) {
+            if (piece.getCanCastleKingSide()) {
+              piece.getIsWhite()
+                ? (whiteCastlable += "K")
+                : (blackCastlable += "k");
+            }
+            if (piece.getCanCastleQueenSide()) {
+              piece.getIsWhite()
+                ? (whiteCastlable += "Q")
+                : (blackCastlable += "q");
+            }
+          }
+        } else {
+          let a = fenString.charCodeAt(fenString.length - 1);
+          if (isDigit(a)) {
+            const digit = fenString.charAt(fenString.length - 1);
+            let tempString = fenString.slice(0, -1);
+            tempString += Number(digit) + Number(1);
+            fenString = tempString;
+          } else {
+            fenString += "1";
+          }
+        }
+      }
+      fenString += "/";
+    }
+    fenString = `${fenString.slice(
+      0,
+      -1
+    )} ${playersTurn} ${whiteCastlable}${blackCastlable} ${
+      this.currentEnPassantPosition
+    }`;
+    return fenString;
+  }
   private disambiguateNotation(piece: Piece, destination: string): string {
     const playersPieces = piece.getIsWhite()
       ? this.whitePlayer.getAvailablePieces()
@@ -172,12 +254,18 @@ class GameBoard {
       return "";
     }
   }
+  private getPlayersMoveCount(): [string, string] {
+    const whitePlayerMoveCount = String(Math.ceil(this.fullMoveCount / 2));
+    const blackPlayerMoveCount = String(Math.floor(this.fullMoveCount / 2));
+    return [whitePlayerMoveCount, blackPlayerMoveCount];
+  }
   constructor() {
     this.initializeVariables();
     this.createGame();
   }
   private initializeVariables(): void {
     this.board = this.createEmptyBoard();
+    // Maybe remove kings position in constructor
     this.whitePlayer = new Player(true, [7, 4]);
     this.blackPlayer = new Player(false, [0, 4]);
     this.isBoardRotated = false;
@@ -191,10 +279,13 @@ class GameBoard {
     this.clearSquare();
     this.updateTimer();
   }
-  private getPlayersMoveCount(): [string, string] {
-    const whitePlayerMoveCount = String(Math.ceil(this.moveCount / 2));
-    const blackPlayerMoveCount = String(Math.floor(this.moveCount / 2));
-    return [whitePlayerMoveCount, blackPlayerMoveCount];
+  private createGame() {
+    // const gameBoard = document.querySelector(".gameBoard") as HTMLDivElement;
+    this.createBoard(document.querySelector(".gameBoard") as HTMLDivElement);
+    this.readFenPattern(this.INITIAL_PATTERN);
+    this.updateAvailableMoves();
+    this.addChessHandlers();
+    this.addPageHandlers();
   }
   private createBoard(htmlElement: HTMLDivElement) {
     for (let x = 0; x < this.BOARD_COLS; x++) {
@@ -247,51 +338,7 @@ class GameBoard {
       htmlElement.insertAdjacentElement("beforeend", row);
     }
   }
-  private generateFEN(): string {
-    let fenString = "";
-    let whiteCastlable = "";
-    let blackCastlable = "";
-    const playersTurn = this.whitePlayersTurn ? "w" : "b";
-    for (const row of this.board) {
-      for (const piece of row) {
-        if (piece instanceof Piece) {
-          fenString += piece.getCharID();
-          if (piece instanceof King) {
-            if (piece.getCanCastleKingSide()) {
-              piece.getIsWhite()
-                ? (whiteCastlable += "K")
-                : (blackCastlable += "k");
-            }
-            if (piece.getCanCastleQueenSide()) {
-              piece.getIsWhite()
-                ? (whiteCastlable += "Q")
-                : (blackCastlable += "q");
-            }
-          }
-        } else {
-          let a = fenString.charCodeAt(fenString.length - 1);
-          if (isDigit(a)) {
-            const digit = fenString.charAt(fenString.length - 1);
-            let tempString = fenString.slice(0, -1);
-            tempString += Number(digit) + Number(1);
-            fenString = tempString;
-          } else {
-            fenString += "1";
-          }
-        }
-      }
-      fenString += "/";
-    }
-    fenString = `${fenString.slice(
-      0,
-      -1
-    )} ${playersTurn} ${whiteCastlable}${blackCastlable} ${
-      this.currentEnPassantPosition
-    }`;
-    return fenString;
-  }
-  private createChessPieces(): void {
-    const pattern = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+  private readFenPattern(pattern: string): void {
     // const pattern = "1R4QQ/R1R4Q/8/6pP/5P1P/8/NK1k4/1N1N4";
     let x = 0;
     let y = 0;
@@ -334,7 +381,6 @@ class GameBoard {
             break;
           case "p":
             piece = new Pawn(x, y, isWhite, "pawn", coords);
-
             break;
           default:
             return;
@@ -345,30 +391,6 @@ class GameBoard {
       }
     }
     // this.generateHeatMaps();
-    this.updateAvailableMoves();
-  }
-  // private readFEN(fenStr: string): void {}
-  private pieceFactory(
-    char: "r" | "n" | "b" | "q" | "k" | "p",
-    x: number,
-    y: number,
-    isWhite: boolean,
-    coords: string
-  ): Piece {
-    switch (char) {
-      case "r":
-        return new Rook(x, y, isWhite, "rook", coords);
-      case "n":
-        return new Knight(x, y, isWhite, "knight", coords);
-      case "b":
-        return new Bishop(x, y, isWhite, "bishop", coords);
-      case "q":
-        return new Queen(x, y, isWhite, "queen", coords);
-      case "k":
-        return new King(x, y, isWhite, "king", coords);
-      case "p":
-        return new Pawn(x, y, isWhite, "pawn", coords);
-    }
   }
   private createChessElement(
     boardSquare: HTMLDivElement,
@@ -390,6 +412,13 @@ class GameBoard {
       pieceElement.addEventListener("click", this.selectPiece.bind(this));
       pieceElement.addEventListener("dragstart", this.dragStart.bind(this));
     }
+  }
+
+  private incrementFullClock(isBlacksTurn: boolean): void {
+    if (isBlacksTurn) this.fullMoveCount++;
+  }
+  private getPlayersTurn(): string {
+    return this.whitePlayersTurn ? "w" : "b";
   }
   private promotePawn(e: Event, pawnX: number, pawnY: number): void {
     if (!e.target || !(e.target instanceof HTMLImageElement)) return;
@@ -441,16 +470,18 @@ class GameBoard {
     this.notationBuilder.promotion = true;
     this.notationBuilder.promotedPieceCharID = piece.getCharID().toUpperCase();
     this.notationBuilder.promotedPieceUnicodeID = piece.getFigurine();
+    this.boardState.promotedPieces.push(piece.getCharID());
+    console.log(this.boardState.promotedPieces);
     this.updateCardValue(piece, this.isPromoting);
     this.closePromotePawnModal();
     this.promotedPawnTo = piece.getCharID().toUpperCase();
-    this.promoteAudio.sound.play();
+    this.promoteAudio.play();
     this.removePiece(pawnToPromote);
     this.createChessElement(boardSquare, piece, true);
     this.addPiece(piece);
     this.updateTimer();
     if (this.isChecked()) {
-      this.checkedAudio.sound.play();
+      this.checkedAudio.play();
     }
     this.updateAvailableMoves();
   }
@@ -464,6 +495,8 @@ class GameBoard {
     }
   }
   private removePiece(piece: Piece): void {
+    this.boardState.capturedPieces.push(piece.getCharID());
+    console.log(this.boardState.capturedPieces);
     this.changeCount(piece);
     (
       document.querySelector(
@@ -579,6 +612,7 @@ class GameBoard {
   viewBoard() {
     console.log(this.board);
   }
+
   private selectPiece(e: Event) {
     console.log(this.board);
     if (!e.target || !(e.target instanceof HTMLImageElement)) return;
@@ -657,69 +691,6 @@ class GameBoard {
     }
   }
 
-  private movePiece(e: Event) {
-    this.dragLeave(e);
-    if (
-      !(
-        e.target instanceof HTMLDivElement ||
-        e.target instanceof HTMLImageElement
-      ) ||
-      !this.selectedPiece ||
-      !this.selectedElement ||
-      !e.target ||
-      !(
-        (this.whitePlayersTurn && this.selectedPiece.getIsWhite()) ||
-        (!this.whitePlayersTurn && !this.selectedPiece.getIsWhite())
-      ) ||
-      this.isPromoting
-    ) {
-      return;
-    }
-    const newPositionX = Number(e.target.dataset.x);
-    const newPositionY = Number(e.target.dataset.y);
-    const oldPositionX = this.selectedPiece.getRank();
-    const oldPositionY = this.selectedPiece.getFile();
-    if (newPositionX === oldPositionX && newPositionY === oldPositionY) return;
-
-    const newBoardElement = document.querySelector(
-      `[data-x="${newPositionX}"][data-y="${newPositionY}"]`
-    ) as HTMLDivElement;
-    if (JSON.parse(newBoardElement.dataset.isMoveableTo as string)) {
-      this.moveCount++;
-      this.removeLastMoveHighlight();
-      this.unsetEnPassant();
-      this.updateState();
-      this.whitePlayersTurn = !this.whitePlayersTurn;
-      this.updateNotationPieceInfo(
-        this.board[oldPositionX][oldPositionY] as Piece,
-        getCoords(newPositionX, newPositionY)
-      );
-      if (
-        this.selectedPiece instanceof King &&
-        this.board[newPositionX][newPositionY] instanceof Rook &&
-        this.selectedPiece.getIsWhite() ===
-          (this.board[newPositionX][newPositionY] as Piece).getIsWhite()
-      ) {
-        this.castleKing(this.board[newPositionX][newPositionY] as Rook);
-      } else {
-        this.whitePlayer.setIsChecked(false);
-        this.blackPlayer.setIsChecked(false);
-
-        this.currentMoveSound = this.movePieceOnBoard(
-          oldPositionX,
-          oldPositionY,
-          newPositionX,
-          newPositionY
-        );
-        this.currentMoveSound.sound.play();
-      }
-      this.addLastMoveHighlight(oldPositionX, oldPositionY);
-      this.clearSquare();
-      // Updates timer even when player hasnt promoted
-      if (!this.isPromoting) this.updateTimer();
-      this.updateAvailableMoves();
-    }
-  }
   private updateNotationPieceInfo(piece: Piece, destination: string): void {
     const pieceChar = piece.getCharID().toUpperCase();
     if (pieceChar !== "P") {
@@ -741,7 +712,6 @@ class GameBoard {
         (rookY > this.selectedPiece.getFile() ? 2 : -2) +
         this.selectedPiece.getFile();
       const kingsCurrentX = this.selectedPiece.getRank();
-
       this.movePieceOnBoard(
         kingsCurrentX,
         this.selectedPiece.getFile(),
@@ -760,16 +730,80 @@ class GameBoard {
       rookPiece.setHadFirstMove();
       (this.selectedPiece as King).setHadFirstMove();
 
-      this.castleAudio.sound.play();
+      this.castleAudio.play();
     }
     this.unselectPiece();
+  }
+  private movePiece(e: Event) {
+    this.dragLeave(e);
+    if (
+      !(
+        e.target instanceof HTMLDivElement ||
+        e.target instanceof HTMLImageElement
+      ) ||
+      !this.selectedPiece ||
+      !this.selectedElement ||
+      !e.target ||
+      // !(
+      //   (this.whitePlayersTurn && this.selectedPiece.getIsWhite()) ||
+      //   (!this.whitePlayersTurn && !this.selectedPiece.getIsWhite())
+      // ) ||
+      this.isPromoting
+    ) {
+      return;
+    }
+    const newPositionX = Number(e.target.dataset.x);
+    const newPositionY = Number(e.target.dataset.y);
+    const oldPositionX = this.selectedPiece.getRank();
+    const oldPositionY = this.selectedPiece.getFile();
+    if (newPositionX === oldPositionX && newPositionY === oldPositionY) return;
+
+    const newBoardElement = document.querySelector(
+      `[data-x="${newPositionX}"][data-y="${newPositionY}"]`
+    ) as HTMLDivElement;
+    if (JSON.parse(newBoardElement.dataset.isMoveableTo as string)) {
+      this.setBoardStateNotationProperties();
+      console.log(this.boardState);
+      this.fullMoveCount++;
+      this.removeLastMoveHighlight();
+      this.unsetEnPassant();
+      this.updateState();
+      this.whitePlayersTurn = !this.whitePlayersTurn;
+      this.updateNotationPieceInfo(
+        this.board[oldPositionX][oldPositionY] as Piece,
+        getCoords(newPositionX, newPositionY)
+      );
+      if (
+        this.selectedPiece instanceof King &&
+        this.board[newPositionX][newPositionY] instanceof Rook &&
+        this.selectedPiece.getIsWhite() ===
+          (this.board[newPositionX][newPositionY] as Piece).getIsWhite()
+      ) {
+        this.castleKing(this.board[newPositionX][newPositionY] as Rook);
+      } else {
+        this.whitePlayer.setIsChecked(false);
+        this.blackPlayer.setIsChecked(false);
+        const audio = this.movePieceOnBoard(
+          oldPositionX,
+          oldPositionY,
+          newPositionX,
+          newPositionY
+        );
+        audio.play();
+      }
+      this.addLastMoveHighlight(oldPositionX, oldPositionY);
+      this.clearSquare();
+      // Updates timer even when player hasnt promoted
+      if (!this.isPromoting) this.updateTimer();
+      this.updateAvailableMoves();
+    }
   }
   private movePieceOnBoard(
     oldPositionX: number,
     oldPositionY: number,
     newPositionX: number,
     newPositionY: number
-  ): AudioInfo {
+  ): HTMLAudioElement {
     let moveSound = this.placeAudio;
     const boardSquare = this.getPieces().get(
       getCoords(oldPositionX, oldPositionY)
@@ -986,40 +1020,6 @@ class GameBoard {
     this.whitePlayer.createNewTimer();
     this.blackPlayer.createNewTimer();
   }
-  private generateNotation(): string {
-    if (!this.selectedPiece) return "";
-    switch (this.currentMoveSound.moveType) {
-      case "place": {
-        return `${this.selectedPiece!.getCharID().toUpperCase()}${getCoords(
-          this.selectedPiece!.getRank(),
-          this.selectedPiece!.getFile()
-        )}`;
-      }
-      case "capture": {
-        return `${this.selectedPiece!.getCharID().toUpperCase()}${
-          this.currentMoveSound.notation
-        }${getCoords(
-          this.selectedPiece!.getRank(),
-          this.selectedPiece!.getFile()
-        )}`;
-      }
-      case "checked": {
-        return `${this.selectedPiece!.getCharID().toUpperCase()}${getCoords(
-          this.selectedPiece!.getRank(),
-          this.selectedPiece!.getFile()
-        )}${this.currentMoveSound.notation}`;
-      }
-      case "castle": {
-      }
-      case "promote": {
-        return `${getCoords(
-          this.selectedPiece!.getRank(),
-          this.selectedPiece!.getFile()
-        )}${this.currentMoveSound.notation}${this.promotedPawnTo}`;
-      }
-    }
-    return "";
-  }
   private updateAvailableMoves(): void {
     if (this.isPromoting) return;
     this.generateHeatMaps();
@@ -1046,19 +1046,20 @@ class GameBoard {
     this.whitePlayer.updateMoves();
     this.blackPlayer.updateMoves();
     // this.unsetEnPassant();
-    // this.getCastlableMoves();
+    this.getCastlableMoves();
     this.checkVictory();
-    this.createNotation();
+    // this.createNotation();
     this.unselectPiece();
     // console.log(this.generateFEN());
     // console.log(this.generateNotation());
   }
-  private createNotation() {
+  private createNotation(): string {
+    let notation = "";
     if (this.notationBuilder.castled) {
       if (this.notationBuilder.castleKingSide) {
-        console.log("O-O");
+        notation = "O-O";
       } else {
-        console.log("O-O-O");
+        notation = "O-O-O";
       }
     } else {
       const capture = this.notationBuilder.capture ? "x" : "";
@@ -1070,10 +1071,10 @@ class GameBoard {
       const promoted = this.notationBuilder.promotion
         ? `=${this.notationBuilder.promotedPieceCharID}`
         : "";
-      const notation = `${this.notationBuilder.pieceCharID}${this.notationBuilder.origin}${capture}${this.notationBuilder.destination}${promoted}${checked}`;
-      console.log(notation);
+      notation = `${this.notationBuilder.pieceCharID}${this.notationBuilder.origin}${capture}${this.notationBuilder.destination}${promoted}${checked}`;
     }
     this.resetNotationBuilder();
+    return notation;
   }
   private getCastlableMoves(): void {
     this.whitePlayer.canCastle(this.board);
@@ -1364,7 +1365,7 @@ class GameBoard {
     document
       .querySelectorAll(".chess-piece")
       .forEach((piece) => piece.remove());
-    this.createChessPieces();
+    this.readFenPattern(this.INITIAL_PATTERN);
     this.addChessHandlers();
     this.removeLastMoveHighlight();
     this.resetCapturedPieces();
@@ -1395,13 +1396,6 @@ class GameBoard {
     document
       .querySelector(".next")!
       .addEventListener("click", this.nextState.bind(this));
-  }
-  private createGame() {
-    const gameBoard = document.querySelector(".gameBoard") as HTMLDivElement;
-    this.createBoard(gameBoard);
-    this.createChessPieces();
-    this.addChessHandlers();
-    this.addPageHandlers();
   }
   private checkVictory() {
     const whiteArmySize = this.whitePlayer.getAvailablePieces().size;
@@ -1481,3 +1475,26 @@ function isUpperCase(charCode: number) {
 function isDigit(charCode: number) {
   return charCode >= 48 && charCode <= 57;
 }
+
+// private pieceFactory(
+//   char: "r" | "n" | "b" | "q" | "k" | "p",
+//   x: number,
+//   y: number,
+//   isWhite: boolean,
+//   coords: string
+// ): Piece {
+//   switch (char) {
+//     case "r":
+//       return new Rook(x, y, isWhite, "rook", coords);
+//     case "n":
+//       return new Knight(x, y, isWhite, "knight", coords);
+//     case "b":
+//       return new Bishop(x, y, isWhite, "bishop", coords);
+//     case "q":
+//       return new Queen(x, y, isWhite, "queen", coords);
+//     case "k":
+//       return new King(x, y, isWhite, "king", coords);
+//     case "p":
+//       return new Pawn(x, y, isWhite, "pawn", coords);
+//   }
+// }

@@ -468,8 +468,8 @@ export class King extends positionalPiece {
       charID
     );
     this.hadFirstMove = false;
-    this.canCastleKingSide = false;
-    this.canCastleQueenSide = false;
+    this.canCastleKingSide = true;
+    this.canCastleQueenSide = true;
   }
   public getHadFirstMove(): boolean {
     return this.hadFirstMove;
@@ -511,20 +511,20 @@ export class King extends positionalPiece {
                 !(board[rooksX][rooksY] instanceof King))
             ) {
               isRookCastable = false;
-              if (rook.getFile() === 0) {
-                this.canCastleQueenSide = false;
-              } else {
-                this.canCastleKingSide = false;
-              }
+              // if (rook.getFile() === 0) {
+              //   this.canCastleQueenSide = false;
+              // } else {
+              //   this.canCastleKingSide = false;
+              // }
               break;
             }
           } while (rooksY !== this.getFile());
           if (isRookCastable) {
-            if (rook.getFile() === 0) {
-              this.canCastleQueenSide = true;
-            } else {
-              this.canCastleKingSide = true;
-            }
+            // if (rook.getFile() === 0) {
+            //   this.canCastleQueenSide = true;
+            // } else {
+            //   this.canCastleKingSide = true;
+            // }
             castableMoves.push([rook.getRank(), rook.getFile()]);
           }
         }
