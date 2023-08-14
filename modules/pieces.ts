@@ -123,7 +123,6 @@ export class Piece {
         for (const move of this.getlegalMoves()) {
           const newPositionX = this.getRank() + move[0];
           const newPositionY = this.getFile() + move[1];
-
           if (this.isValid(newPositionX, newPositionY)) {
             const newPosition = board[newPositionX][newPositionY];
             if (typeof newPosition === "number") {
@@ -136,6 +135,7 @@ export class Piece {
         for (const move of this.getAttacks()) {
           const newPositionX = this.getRank() + move[0];
           const newPositionY = this.getFile() + move[1];
+
           if (this.isValid(newPositionX, newPositionY)) {
             const newPosition = board[newPositionX][newPositionY];
             if (
@@ -147,6 +147,7 @@ export class Piece {
               const possiblePawn = board[this.getRank()][newPositionY];
               if (
                 possiblePawn instanceof Pawn &&
+                possiblePawn.getIsWhite() !== this.getIsWhite() &&
                 possiblePawn.getCanEnPassant()
               ) {
                 validMoves.push([newPositionX, newPositionY]);

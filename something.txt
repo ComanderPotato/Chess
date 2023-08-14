@@ -5,3 +5,6 @@ King doesnt get checked when promoting
 updateAvailableMoves gets called every time even if no move is made
 
 when promoting a pawn, the enemy gets + 1 pawn capture on card, and removes the piece that was chosen. My points go up by the piece value
+
+
+right white night to f3, black pawn to e5, heatmap doesnt include knight attack on pawn

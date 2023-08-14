@@ -104,6 +104,7 @@ export class Piece {
                         else {
                             const possiblePawn = board[this.getRank()][newPositionY];
                             if (possiblePawn instanceof Pawn &&
+                                possiblePawn.getIsWhite() !== this.getIsWhite() &&
                                 possiblePawn.getCanEnPassant()) {
                                 validMoves.push([newPositionX, newPositionY]);
                             }
